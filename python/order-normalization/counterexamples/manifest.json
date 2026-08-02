@@ -1,0 +1,27 @@
+{
+  "counterexamples": [
+    {
+      "id": "noop",
+      "path": "noop.patch",
+      "expectedFailedAssertions": [
+        "duplicate-lines",
+        "decimal-cents"
+      ]
+    },
+    {
+      "id": "happy-path-only",
+      "path": "happy-path-only.patch",
+      "expectedFailedAssertions": [
+        "duplicate-lines",
+        "decimal-cents"
+      ]
+    },
+    {
+      "id": "mutates-input",
+      "path": "mutates-input.patch",
+      "expectedFailedAssertions": [
+        "metadata-and-input-stability"
+      ]
+    }
+  ]
+}

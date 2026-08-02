@@ -1,0 +1,25 @@
+diff --git a/src/order_normalizer.py b/src/order_normalizer.py
+index f91f63b..b4522e9 100644
+--- a/src/order_normalizer.py
++++ b/src/order_normalizer.py
+@@ -3,9 +3,17 @@
+ 
+ def normalize_order(event):
+     """Return a normalized order summary for an inbound event."""
++    lines = [
++        {
++            "sku": line["sku"].strip().upper(),
++            "quantity": int(line["quantity"]),
++            "unit_price_cents": int(float(line["unit_price"]) * 100),
++        }
++        for line in event["lines"]
++    ]
+     return {
+         "order_id": event["order_id"],
+-        "currency": event["currency"],
+-        "lines": event["lines"],
+-        "total_cents": sum(line["unit_price_cents"] * line["quantity"] for line in event["lines"]),
++        "currency": event["currency"].upper(),
++        "lines": lines,
++        "total_cents": sum(line["unit_price_cents"] * line["quantity"] for line in lines),
+     }

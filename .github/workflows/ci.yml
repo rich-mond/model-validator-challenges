@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+  push:
+    branches:
+      - develop
+      - main
+
+jobs:
+  verify-challenges:
+    name: verify challenge packs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout challenge catalog
+        uses: actions/checkout@v4
+        with:
+          path: model-validator-challenges
+
+      - name: Checkout framework
+        uses: actions/checkout@v4
+        with:
+          repository: rich-mond/model-validator
+          ref: develop
+          path: model-validator
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: model-validator/global.json
+
+      - name: Restore framework
+        working-directory: model-validator
+        run: dotnet restore ModelValidator.slnx --locked-mode
+
+      - name: Build framework
+        working-directory: model-validator
+        run: dotnet build ModelValidator.slnx -c Release --no-restore
+
+      - name: Verify .NET idempotent processing pack
+        working-directory: model-validator
+        run: dotnet run --project src/ModelValidator.Cli/ModelValidator.Cli.csproj -c Release --no-build -- challenge verify --path "$GITHUB_WORKSPACE/model-validator-challenges/dotnet/idempotent-processing"
+
+      - name: Verify Python order normalization pack
+        working-directory: model-validator
+        run: dotnet run --project src/ModelValidator.Cli/ModelValidator.Cli.csproj -c Release --no-build -- challenge verify --path "$GITHUB_WORKSPACE/model-validator-challenges/python/order-normalization"
+
+      - name: Ensure generated verification output is ignored
+        working-directory: model-validator-challenges
+        run: git status --short

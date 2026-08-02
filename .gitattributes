@@ -1,0 +1,6 @@
+* text=auto
+*.json text eol=lf
+*.md text eol=lf
+*.patch text eol=lf
+**/validator/run text eol=lf
+*.bundle binary

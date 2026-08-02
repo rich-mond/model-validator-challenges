@@ -1,0 +1,49 @@
+diff --git a/src/order_normalizer.py b/src/order_normalizer.py
+index f91f63b..2a6151d 100644
+--- a/src/order_normalizer.py
++++ b/src/order_normalizer.py
+@@ -1,11 +1,41 @@
+ """Order event normalization."""
+ 
++from decimal import Decimal, ROUND_HALF_UP
++
+ 
+ def normalize_order(event):
+     """Return a normalized order summary for an inbound event."""
++    totals_by_sku = {}
++    currency = event["currency"].upper()
++
++    for line in event["lines"]:
++        quantity = int(line["quantity"])
++        if quantity == 0:
++            continue
++
++        sku = line["sku"].strip().upper()
++        unit_price_cents = _to_cents(line["unit_price"])
++        existing = totals_by_sku.setdefault(
++            sku,
++            {
++                "sku": sku,
++                "quantity": 0,
++                "unit_price_cents": unit_price_cents,
++            },
++        )
++        existing["quantity"] += quantity
++
++    lines = [totals_by_sku[sku] for sku in sorted(totals_by_sku)]
++    total_cents = sum(line["unit_price_cents"] * line["quantity"] for line in lines)
++
+     return {
+         "order_id": event["order_id"],
+-        "currency": event["currency"],
+-        "lines": event["lines"],
+-        "total_cents": sum(line["unit_price_cents"] * line["quantity"] for line in event["lines"]),
++        "currency": currency,
++        "lines": lines,
++        "total_cents": total_cents,
+     }
++
++
++def _to_cents(value):
++    amount = Decimal(str(value))
++    return int((amount * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))

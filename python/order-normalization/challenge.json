@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "1.0",
+  "challengeId": "order-normalization-python",
+  "challengeVersion": "1.0.0",
+  "title": "Order event normalization",
+  "prompt": {
+    "path": "prompt.md",
+    "sha256": "2124db2c137715f18d44ccc154533ebf36d9ea4ee0cec4b7a92b55d953b2c9f6"
+  },
+  "workspace": {
+    "type": "git-bundle",
+    "path": "workspace/starter.bundle",
+    "sha256": "64c88c596e049e6a24e2352642580c9e4ba606d56b83f21ea036be7b0d0ecc77",
+    "baseCommit": "73879e9b70e1a67789fe2e194b0f58e3c1c4b3bd"
+  },
+  "validation": {
+    "image": {
+      "type": "build",
+      "contextPath": "validator",
+      "containerfilePath": "validator/Containerfile",
+      "contextSha256": "b275424cebd27aa7f82487cd7932b2d222b7272d0160ad60eaab97324e5dbdff"
+    },
+    "workspacePath": "/candidate",
+    "assertions": [
+      {
+        "id": "duplicate-lines",
+        "title": "Duplicate SKU lines are normalized and combined",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "duplicate-lines"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "decimal-cents",
+        "title": "Decimal prices are rounded to integer cents",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "decimal-cents"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "metadata-and-input-stability",
+        "title": "Metadata is preserved and input is not mutated",
+        "classification": "regression",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "metadata-and-input-stability"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      }
+    ]
+  },
+  "limits": {
+    "targetTimeoutSeconds": 1800,
+    "validatorTimeoutSeconds": 600
+  }
+}

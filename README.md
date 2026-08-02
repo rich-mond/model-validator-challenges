@@ -1,51 +1,103 @@
 # Model Validator Challenges
 
-This repository contains challenge packs for the Model Validator framework.
+This repository is the public challenge catalog for the Model Validator framework.
 
-It is intentionally separate from the framework repository. The framework repository contains the runner and reporting engine. This repository contains challenge inputs: starter bundle, task prompt, hidden validator, oracle patch and known-invalid patches.
-
-The repository is language-agnostic at the top level. Individual challenge packs may target a specific ecosystem because their starter workspaces and validators need real tooling.
-
-Suggested layout:
+It contains challenge packs: the task prompts, starter workspaces, validators and calibration patches used to evaluate coding-agent output. It does not contain the runner. The runner lives in:
 
 ```text
-dotnet/
-  idempotent-processing/
-python/
-javascript/
-java/
-rust/
+https://github.com/rich-mond/model-validator
 ```
 
-## Current Challenge
+## Why This Repo Exists
+
+Model Validator deliberately separates the benchmark framework from the challenge packs.
+
+The framework repo answers: how do we materialise workspaces, run target adapters, isolate validation, score results and report comparisons?
+
+This repo answers: what tasks should agents attempt, what starting files do they receive, and how is correctness objectively verified?
+
+Keeping those responsibilities separate matters because challenge packs can be written for any language or ecosystem without changing the framework. A new Python, JavaScript, Java or Rust task should be another pack in this repository, not a framework feature.
+
+## Supported Challenge Packs
+
+| Pack | Language | Task | Verification |
+| --- | --- | --- | --- |
+| `dotnet/idempotent-processing` | C# / .NET | Make command processing idempotent under duplicate and concurrent delivery | Docker validator checks duplicate delivery, concurrent delivery and distinct-command regression |
+| `python/order-normalization` | Python | Normalize inbound order events without mutating input | Docker validator checks duplicate SKU aggregation, decimal cent rounding and metadata/input stability |
+
+Each listed pack is expected to pass `modelval challenge verify` before it is used in a benchmark.
+
+## Fresh Start
+
+Clone the framework and challenge repos side by side:
+
+```powershell
+cd C:\Work
+git clone https://github.com/rich-mond/model-validator.git
+git clone https://github.com/rich-mond/model-validator-challenges.git
+```
+
+Build the framework:
+
+```powershell
+cd C:\Work\model-validator
+dotnet restore ModelValidator.slnx --locked-mode
+dotnet build ModelValidator.slnx -c Release
+dotnet test ModelValidator.slnx -c Release --no-build
+```
+
+Verify both supported packs:
+
+```powershell
+dotnet run --project C:\Work\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path C:\Work\model-validator-challenges\dotnet\idempotent-processing
+dotnet run --project C:\Work\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path C:\Work\model-validator-challenges\python\order-normalization
+```
+
+Verification proves a challenge pack is internally coherent before any model or agent is benchmarked. The starter workspace must fail required assertions, the oracle patch must pass, repeated oracle validation must be stable and known-invalid patches must fail.
+
+## Pack Anatomy
+
+Every challenge pack has the same contract:
 
 ```text
-dotnet/idempotent-processing/
+<language>/<challenge-id>/
 ├── challenge.json
 ├── prompt.md
-├── workspace/starter.bundle
+├── workspace/
+│   └── starter.bundle
 ├── validator/
-├── oracle/solution.patch
+│   ├── Containerfile
+│   └── run
+├── oracle/
+│   └── solution.patch
 ├── counterexamples/
+│   ├── manifest.json
+│   └── *.patch
 └── verification/
+    └── README.md
 ```
 
-The current challenge asks an agent to make command processing idempotent under duplicate and concurrent delivery.
+The language folder names are catalog organization only. The framework does not infer behavior from them. The pack manifest is the contract.
 
-## How It Is Used
+## What Each File Means
 
-From a clone of the framework repository:
+`challenge.json` declares the challenge ID, prompt digest, starter bundle digest, validator image, assertions and time limits.
 
-```text
-modelval challenge verify --path ../model-validator-challenges/dotnet/idempotent-processing
-modelval run --plan <benchmark-plan.json>
-```
+`prompt.md` is the task text passed to the target agent.
 
-A real benchmark plan points at this challenge directory and one or more target configuration files. The framework materialises `workspace/starter.bundle` into a fresh workspace for each target, runs the target adapter, captures the candidate patch, then runs the validator assertions declared in `challenge.json`.
+`workspace/starter.bundle` is a Git bundle containing the exact starter repository. The framework materialises this bundle into a fresh candidate workspace for each target attempt.
+
+`validator/` contains a Docker build context for the hidden validator. The target agent does not see these files during execution.
+
+`oracle/solution.patch` is a known-good patch used to prove the validator can recognize a correct solution. It is not used to judge real candidates.
+
+`counterexamples/` contains known-bad patches used to calibrate validator sensitivity.
+
+`verification/` contains human notes. Generated verification JSON is ignored and should not be committed.
 
 ## What The Target Agent Sees
 
-The target agent receives only:
+During a benchmark, the target agent receives only:
 
 - the materialised starter workspace;
 - the task prompt;
@@ -53,18 +105,66 @@ The target agent receives only:
 
 The target agent does not receive:
 
+- `challenge.json`;
 - validator source;
 - oracle patch;
 - counterexamples;
-- `challenge.json`;
-- Git remotes or repository credentials.
+- repository credentials;
+- Git remotes.
 
-## What The Validator Does
+The framework removes Git remotes from the materialised workspace before target execution.
 
-The validator is built from `validator/Containerfile`. Each assertion in `challenge.json` runs `/validator/run <assertion-id>` against the candidate workspace mounted at `/candidate`.
+## How A Benchmark Uses A Pack
 
-Correctness is determined only by assertion exit statuses. The oracle patch is not used to judge a real candidate.
+A benchmark plan points at one challenge directory and one or more target configuration files:
+
+```json
+{
+  "schemaVersion": "1.0",
+  "planId": "first-order-normalization-run",
+  "challengePath": "C:\\Work\\model-validator-challenges\\python\\order-normalization",
+  "targets": [
+    "C:\\Work\\targets\\codex-gpt-5-default.json"
+  ],
+  "attemptsPerTarget": 1,
+  "outputPath": "C:\\Work\\model-validator-runs\\first-order-normalization-run",
+  "execution": {
+    "maximumParallelTargets": 1,
+    "retainWorkspaces": false
+  }
+}
+```
+
+The framework then:
+
+1. Verifies the pack manifest and digests.
+2. Clones the starter bundle into a fresh workspace.
+3. Removes Git remotes.
+4. Gives the target adapter the workspace and prompt.
+5. Waits for the adapter to finish.
+6. Captures the candidate patch.
+7. Runs the validator container with network disabled.
+8. Writes objective results and reports to the plan output directory.
+
+## Adding A Challenge Pack
+
+Add a new complete pack under a language or ecosystem folder. Do not add generated benchmark output.
+
+A complete pack needs:
+
+- a focused task prompt;
+- a starter Git bundle;
+- a validator container with one or more objective assertions;
+- an oracle patch that passes every required assertion;
+- known-invalid patches that demonstrate important failure modes;
+- a manifest with accurate SHA-256 digests.
+
+After adding or changing a pack, run:
+
+```powershell
+dotnet run --project C:\Work\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path C:\Work\model-validator-challenges\<language>\<challenge-id>
+```
 
 ## Generated Outputs
 
-Verification JSON, run outputs, logs and temporary workspaces are generated artifacts. They are ignored by Git and should not be committed to this repository.
+Do not commit benchmark runs, logs, temporary workspaces, generated verification JSON or candidate patches. Those files belong in ignored output directories such as `runs/`, `artifacts/`, `outputs/`, `temp/` or an external results location.

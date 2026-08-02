@@ -11,3 +11,4 @@ coverage/
 *.trx
 *.coverage
 IMPLEMENTATION_EVIDENCE.md
+AGENTS.md

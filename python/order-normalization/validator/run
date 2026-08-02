@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+import copy
+import importlib.util
+import sys
+from pathlib import Path
+
+
+ASSERTION = sys.argv[1] if len(sys.argv) > 1 else ""
+CANDIDATE = Path("/candidate/src/order_normalizer.py")
+
+
+def load_module():
+    spec = importlib.util.spec_from_file_location("order_normalizer", CANDIDATE)
+    if spec is None or spec.loader is None:
+        raise AssertionError("Could not load src/order_normalizer.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def sample_event():
+    return {
+        "order_id": "ORD-1001",
+        "currency": "gbp",
+        "lines": [
+            {"sku": " widget ", "quantity": 2, "unit_price": "10.01"},
+            {"sku": "GADGET", "quantity": 1, "unit_price": "5.50"},
+            {"sku": "WIDGET", "quantity": 3, "unit_price": "10.01"},
+            {"sku": "ignored", "quantity": 0, "unit_price": "99.99"},
+        ],
+    }
+
+
+def assert_duplicate_lines():
+    result = load_module().normalize_order(sample_event())
+    assert result["lines"] == [
+        {"sku": "GADGET", "quantity": 1, "unit_price_cents": 550},
+        {"sku": "WIDGET", "quantity": 5, "unit_price_cents": 1001},
+    ], f"unexpected normalized lines: {result['lines']!r}"
+
+
+def assert_decimal_cents():
+    event = {
+        "order_id": "ORD-ROUND",
+        "currency": "usd",
+        "lines": [
+            {"sku": "ROUND", "quantity": 2, "unit_price": "1.005"},
+            {"sku": "EXACT", "quantity": 1, "unit_price": "2.25"},
+        ],
+    }
+    result = load_module().normalize_order(event)
+    assert result["lines"][0]["unit_price_cents"] == 225, result
+    assert result["lines"][1]["unit_price_cents"] == 101, result
+    assert result["total_cents"] == 427, result
+
+
+def assert_metadata_and_input_stability():
+    event = sample_event()
+    original = copy.deepcopy(event)
+    result = load_module().normalize_order(event)
+    assert event == original, "normalize_order must not mutate the input event"
+    assert result["order_id"] == "ORD-1001", result
+    assert result["currency"] == "GBP", result
+
+
+ASSERTIONS = {
+    "duplicate-lines": assert_duplicate_lines,
+    "decimal-cents": assert_decimal_cents,
+    "metadata-and-input-stability": assert_metadata_and_input_stability,
+}
+
+
+if ASSERTION not in ASSERTIONS:
+    print(f"Unknown assertion {ASSERTION}", file=sys.stderr)
+    sys.exit(2)
+
+try:
+    ASSERTIONS[ASSERTION]()
+except Exception as exc:
+    print(str(exc), file=sys.stderr)
+    sys.exit(1)
