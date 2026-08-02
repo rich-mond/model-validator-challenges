@@ -1,0 +1,67 @@
+{
+  "schemaVersion": "1.0",
+  "challengeId": "idempotent-processing-dotnet",
+  "challengeVersion": "1.0.0",
+  "title": "Idempotent command processing",
+  "prompt": {
+    "path": "prompt.md",
+    "sha256": "6ddfa14d884f20cf8e4545fdf963c589708b00f9cbcded2807770b4fe2f3721e"
+  },
+  "workspace": {
+    "type": "git-bundle",
+    "path": "workspace/starter.bundle",
+    "sha256": "c29d2bddc4b3441000c476c57f59354e1241422802e40ae98fc0feb42cd3d279",
+    "baseCommit": "096fa8e0d6cb26f3e40ab75579e4e0e6d29aef7c"
+  },
+  "validation": {
+    "image": {
+      "type": "build",
+      "contextPath": "validator",
+      "containerfilePath": "validator/Containerfile",
+      "contextSha256": "13b0c44df8bcb69fd2727f661874dd11594a1cc0f13b104255ec93d7b4a45e45"
+    },
+    "workspacePath": "/candidate",
+    "assertions": [
+      {
+        "id": "duplicate-delivery",
+        "title": "Duplicate delivery applies the transition once",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "duplicate-delivery"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "concurrent-delivery",
+        "title": "Concurrent duplicate delivery is safe",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "concurrent-delivery"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "distinct-commands",
+        "title": "Distinct commands still update balances",
+        "classification": "regression",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "distinct-commands"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      }
+    ]
+  },
+  "limits": {
+    "targetTimeoutSeconds": 1800,
+    "validatorTimeoutSeconds": 600
+  }
+}

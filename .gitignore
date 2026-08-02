@@ -1,0 +1,13 @@
+**/verification/tmp/
+**/verification/*.json
+artifacts/
+outputs/
+temp/
+tmp/
+bin/
+obj/
+TestResults/
+coverage/
+*.trx
+*.coverage
+IMPLEMENTATION_EVIDENCE.md

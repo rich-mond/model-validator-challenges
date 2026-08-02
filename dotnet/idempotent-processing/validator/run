@@ -1,0 +1,33 @@
+#!/bin/sh
+set -eu
+
+assertion="${1:-}"
+source_file="/candidate/src/CommandProcessor/CommandStore.cs"
+
+case "$assertion" in
+  duplicate-delivery)
+    if grep -q 'processedCommandIds' "$source_file" && grep -q 'return;' "$source_file"; then
+      exit 0
+    fi
+    echo 'Duplicate command IDs must be ignored.' >&2
+    exit 1
+    ;;
+  concurrent-delivery)
+    if grep -q 'lock (' "$source_file"; then
+      exit 0
+    fi
+    echo 'Command application must be protected for concurrent delivery.' >&2
+    exit 1
+    ;;
+  distinct-commands)
+    if grep -q 'GetBalance(command.AccountId) + command.Amount' "$source_file"; then
+      exit 0
+    fi
+    echo 'Distinct command balance accumulation must remain intact.' >&2
+    exit 1
+    ;;
+  *)
+    echo "Unknown assertion $assertion" >&2
+    exit 2
+    ;;
+esac

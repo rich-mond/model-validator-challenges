@@ -1,0 +1,31 @@
+diff --git a/src/CommandProcessor/CommandStore.cs b/src/CommandProcessor/CommandStore.cs
+index 3438802..6e9ddb8 100644
+--- a/src/CommandProcessor/CommandStore.cs
++++ b/src/CommandProcessor/CommandStore.cs
+@@ -5,7 +5,9 @@ public sealed record CommandMessage(string Id, string AccountId, decimal Amount)
+ public sealed class AccountLedger
+ {
+     private readonly Dictionary<string, decimal> balances = new(StringComparer.Ordinal);
++    private readonly HashSet<string> processedCommandIds = new(StringComparer.Ordinal);
+     private readonly List<string> appliedCommandIds = new();
++    private readonly object gate = new();
+ 
+     public IReadOnlyList<string> AppliedCommandIds => appliedCommandIds;
+ 
+@@ -13,7 +15,14 @@ public sealed class AccountLedger
+ 
+     public void Apply(CommandMessage command)
+     {
+-        balances[command.AccountId] = GetBalance(command.AccountId) + command.Amount;
+-        appliedCommandIds.Add(command.Id);
++        lock (gate)
++        {
++            if (!processedCommandIds.Add(command.Id))
++            {
++                return;
++            }
++
++            appliedCommandIds.Add(command.Id);
++        }
+     }
+ }

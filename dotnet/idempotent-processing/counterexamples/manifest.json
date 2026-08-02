@@ -1,0 +1,26 @@
+{
+  "counterexamples": [
+    {
+      "id": "noop",
+      "path": "noop.patch",
+      "expectedFailedAssertions": [
+        "duplicate-delivery",
+        "concurrent-delivery"
+      ]
+    },
+    {
+      "id": "happy-path-only",
+      "path": "happy-path-only.patch",
+      "expectedFailedAssertions": [
+        "concurrent-delivery"
+      ]
+    },
+    {
+      "id": "regression-breaking",
+      "path": "regression-breaking.patch",
+      "expectedFailedAssertions": [
+        "distinct-commands"
+      ]
+    }
+  ]
+}
