@@ -2,6 +2,8 @@
 
 Language: Python
 
+Complexity: Foundation
+
 This challenge asks a target agent to normalize inbound order events.
 
 The starter workspace assumes line items already contain integer cent values and does no normalization. A correct solution must parse decimal prices, combine duplicate SKUs, omit zero-quantity lines, sort normalized lines and avoid mutating the input event.

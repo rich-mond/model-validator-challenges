@@ -2,6 +2,8 @@
 
 Language: C# / .NET
 
+Complexity: Foundation
+
 This challenge asks a target agent to make a simple command ledger idempotent.
 
 The starter workspace applies every delivered command. That is wrong when the same command ID is delivered twice or delivered concurrently. A correct solution must apply each command ID at most once while preserving normal balance updates for distinct commands.
