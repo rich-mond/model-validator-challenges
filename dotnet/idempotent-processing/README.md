@@ -16,7 +16,7 @@ The starter workspace applies every delivered command. That is wrong when the sa
 
 ## Public Self-Check
 
-The materialised starter workspace includes a small public check project. Target agents are instructed to run it before they stop:
+The materialised starter workspace includes a small public check project. Target agents must run this exact command after editing:
 
 ```powershell
 dotnet run --project src\CommandProcessor.Checks\CommandProcessor.Checks.csproj

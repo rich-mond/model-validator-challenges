@@ -28,6 +28,12 @@ A complete challenge pack lives under a language or ecosystem folder:
 
 The language folder is catalog organization only. The framework does not infer behavior from the folder name. The `challenge.json` manifest is the contract.
 
+## Catalog-Wide Consistency
+
+Apply repository-level challenge improvements to every supported pack where the change applies. This includes manifest fields, public self-checks, starter-workspace hygiene, generated-output ignores, line-ending rules, README structure, validator behavior and verification documentation.
+
+When a change applies to only some packs, explain the boundary in the PR body. Do not leave one supported pack behind because it was not the pack that exposed the issue.
+
 ## Manifest
 
 `challenge.json` declares the immutable inputs and validation contract for one pack.
@@ -45,12 +51,12 @@ Core fields:
 - `validation.image`: validator container reference or local build context.
 - `validation.workspacePath`: mount path where validators expect the candidate workspace.
 - `validation.assertions`: objective checks run after target execution.
-- `selfChecks`: public workspace commands the target agent must run before it stops.
+- `selfChecks`: exact public workspace commands the target agent must run after editing.
 - `limits`: timeout and resource limits used by target and validation execution.
 
 Every assertion and self-check command is an executable plus argument array. Do not encode shell command strings in the manifest.
 
-Self-checks are copied into `MODEL_VALIDATOR_TASK.md` for interactive benchmark runs. They should be useful public checks such as `dotnet test`, `python -m unittest` or a project-specific smoke test. They are not hidden validators and do not determine benchmark correctness.
+Self-checks are copied into `MODEL_VALIDATOR_TASK.md` for benchmark runs. The target agent must run the declared commands exactly and must not substitute different checks. They are not hidden validators and do not determine benchmark correctness.
 
 ## Prompt
 
@@ -62,7 +68,7 @@ It should state:
 - any public constraints;
 - the expected edit boundary.
 
-Put local build or test commands in `selfChecks`, not only in prose, so editor-based agents receive explicit commands in the generated workspace task.
+Put local build or test commands in `selfChecks`, not only in prose, so editor-based agents receive exact commands in the generated workspace task.
 
 It must not reveal hidden validator implementation details, oracle patches or known-invalid examples.
 

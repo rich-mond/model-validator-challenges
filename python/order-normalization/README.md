@@ -16,7 +16,7 @@ The starter workspace assumes line items already contain integer cent values and
 
 ## Public Self-Check
 
-The materialised starter workspace includes public unit tests. Target agents are instructed to run them before they stop:
+The materialised starter workspace includes public unit tests. Target agents must run this exact command after editing:
 
 ```powershell
 python -m unittest discover -s tests
