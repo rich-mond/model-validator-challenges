@@ -24,8 +24,8 @@
 List the exact commands run and their outcomes. Use `not run` with a reason when appropriate.
 
 ```powershell
-dotnet run --project C:\Work\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path C:\Work\model-validator-challenges\dotnet\idempotent-processing
-dotnet run --project C:\Work\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path C:\Work\model-validator-challenges\python\order-normalization
+dotnet run --project ..\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path .\dotnet\idempotent-processing
+dotnet run --project ..\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path .\python\order-normalization
 ```
 
 ## Generated Outputs
