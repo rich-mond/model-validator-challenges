@@ -10,8 +10,8 @@
   "workspace": {
     "type": "git-bundle",
     "path": "workspace/starter.bundle",
-    "sha256": "64c88c596e049e6a24e2352642580c9e4ba606d56b83f21ea036be7b0d0ecc77",
-    "baseCommit": "73879e9b70e1a67789fe2e194b0f58e3c1c4b3bd"
+    "sha256": "029a83196be5d29e22698b37e1a2c94baefdd22154359b9fe704576f5dc5dc15",
+    "baseCommit": "03c867cc77d78300765197e837b95c7e9342cf0c"
   },
   "validation": {
     "image": {
@@ -60,6 +60,22 @@
       }
     ]
   },
+  "selfChecks": [
+    {
+      "id": "public-order-normalizer-tests",
+      "title": "Run the public order normalizer tests",
+      "command": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests"
+      ],
+      "workingDirectory": ".",
+      "timeoutSeconds": 120
+    }
+  ],
   "limits": {
     "targetTimeoutSeconds": 1800,
     "validatorTimeoutSeconds": 600

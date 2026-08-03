@@ -69,6 +69,7 @@ During a benchmark, the target agent receives only:
 
 - the materialised starter workspace;
 - the task prompt;
+- public self-check commands from the challenge manifest;
 - explicitly allowed runtime configuration.
 
 The target agent does not receive:
@@ -97,7 +98,7 @@ For the .NET challenge:
 dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge ..\model-validator-challenges\dotnet\idempotent-processing --open vscode --output ..\model-validator-runs\idempotent-processing-vscode
 ```
 
-The framework creates the candidate workspace, writes `AGENTS.md` and `MODEL_VALIDATOR_TASK.md` into that workspace, opens VS Code when requested, then waits. Use your chosen model or coding-agent UI against the printed workspace and ask it to follow those task files. Return to the terminal and press Enter only after the model has finished. Validation starts after that.
+The framework creates the candidate workspace, writes `AGENTS.md` and `MODEL_VALIDATOR_TASK.md` into that workspace, opens VS Code when requested, then waits. Use your chosen model or coding-agent UI against the printed workspace and ask it to follow those task files. The task file includes the challenge's public self-check command, such as a local build or test run, and the agent should run it before stopping. Return to the terminal and press Enter only after the model has finished. Validation starts after that.
 
 If VS Code cannot be opened automatically, open the printed workspace and task file manually. The benchmark will still continue when you press Enter.
 

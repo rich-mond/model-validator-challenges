@@ -45,9 +45,12 @@ Core fields:
 - `validation.image`: validator container reference or local build context.
 - `validation.workspacePath`: mount path where validators expect the candidate workspace.
 - `validation.assertions`: objective checks run after target execution.
+- `selfChecks`: public workspace commands the target agent must run before it stops.
 - `limits`: timeout and resource limits used by target and validation execution.
 
-Every assertion command is an executable plus argument array. Do not encode shell command strings in the manifest.
+Every assertion and self-check command is an executable plus argument array. Do not encode shell command strings in the manifest.
+
+Self-checks are copied into `MODEL_VALIDATOR_TASK.md` for interactive benchmark runs. They should be useful public checks such as `dotnet test`, `python -m unittest` or a project-specific smoke test. They are not hidden validators and do not determine benchmark correctness.
 
 ## Prompt
 
@@ -57,8 +60,9 @@ It should state:
 
 - the requested behavior;
 - any public constraints;
-- commands the candidate can run locally;
 - the expected edit boundary.
+
+Put local build or test commands in `selfChecks`, not only in prose, so editor-based agents receive explicit commands in the generated workspace task.
 
 It must not reveal hidden validator implementation details, oracle patches or known-invalid examples.
 

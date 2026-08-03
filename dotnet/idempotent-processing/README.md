@@ -14,6 +14,16 @@ The starter workspace applies every delivered command. That is wrong when the sa
 | `concurrent-delivery` | requirement | Concurrent delivery of the same command is safe |
 | `distinct-commands` | regression | Distinct command IDs still update balances normally |
 
+## Public Self-Check
+
+The materialised starter workspace includes a small public check project. Target agents are instructed to run it before they stop:
+
+```powershell
+dotnet run --project src\CommandProcessor.Checks\CommandProcessor.Checks.csproj
+```
+
+This is a local sanity check. The hidden Docker validator remains the authoritative benchmark result.
+
 ## Verify
 
 ```powershell
