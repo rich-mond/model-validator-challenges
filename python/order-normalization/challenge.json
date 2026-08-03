@@ -5,7 +5,7 @@
   "title": "Order event normalization",
   "prompt": {
     "path": "prompt.md",
-    "sha256": "2124db2c137715f18d44ccc154533ebf36d9ea4ee0cec4b7a92b55d953b2c9f6"
+    "sha256": "5ba1cf09c3e5672ecd839f330dc50ba400d8b4bf79fc1c8c755be899f3e2a22d"
   },
   "workspace": {
     "type": "git-bundle",
