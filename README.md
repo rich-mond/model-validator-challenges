@@ -61,43 +61,7 @@ Successful verification prints the checks it performed and a short summary: mani
 
 ## Pack Anatomy
 
-Every challenge pack has the same contract:
-
-```text
-<language>/<challenge-id>/
-├── challenge.json
-├── prompt.md
-├── workspace/
-│   └── starter.bundle
-├── validator/
-│   ├── Containerfile
-│   └── run
-├── oracle/
-│   └── solution.patch
-├── counterexamples/
-│   ├── manifest.json
-│   └── *.patch
-└── verification/
-    └── README.md
-```
-
-The language folder names are catalog organization only. The framework does not infer behavior from them. The pack manifest is the contract.
-
-## What Each File Means
-
-`challenge.json` declares the challenge ID, prompt digest, starter bundle digest, validator image, assertions and time limits.
-
-`prompt.md` is the task text passed to the target agent.
-
-`workspace/starter.bundle` is a Git bundle containing the exact starter repository. The framework materialises this bundle into a fresh candidate workspace for each target attempt.
-
-`validator/` contains a Docker build context for the hidden validator. The target agent does not see these files during execution.
-
-`oracle/solution.patch` is a known-good patch used to prove the validator can recognize a correct solution. It is not used to judge real candidates.
-
-`counterexamples/` contains known-bad patches used to calibrate validator sensitivity.
-
-`verification/` contains human notes. Generated verification JSON is ignored and should not be committed.
+Each challenge pack contains a manifest, prompt, starter Git bundle, hidden validator, oracle patch and counterexamples. The full file-format contract lives in [Challenge Authoring](docs/challenge-authoring.md).
 
 ## What The Target Agent Sees
 
@@ -133,13 +97,19 @@ For the .NET challenge:
 dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge ..\model-validator-challenges\dotnet\idempotent-processing --open vscode --output ..\model-validator-runs\idempotent-processing-vscode
 ```
 
-The framework creates the candidate workspace, opens or prints the prompt, waits while you run the selected model or agent, captures the candidate patch, runs this pack's hidden validator and writes the score report under the output directory. It also prints the score report to the console.
+The framework creates the candidate workspace, prints the prompt path, opens VS Code when requested, then waits. Use your chosen model or coding-agent UI against the printed workspace, give it the printed prompt, let it edit the workspace and return to the terminal to press Enter. Validation starts only after that.
 
-To print the score again later:
+If VS Code cannot be opened automatically, open the printed workspace and prompt manually. The benchmark will still continue when you press Enter.
+
+After validation, the framework captures the candidate patch, runs this pack's hidden validator, writes detailed reports under the output directory and prints a console-friendly score summary.
+
+To print the console score summary again later:
 
 ```powershell
 dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- results --run ..\model-validator-runs\order-normalization-vscode
 ```
+
+To print the persisted Markdown or JSON reports instead, use `report --run <run-directory> --format markdown` or `report --run <run-directory> --format json`.
 
 For another agent CLI, pass the command after `--`:
 
