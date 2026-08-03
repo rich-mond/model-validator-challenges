@@ -2,32 +2,114 @@
 set -eu
 
 assertion="${1:-}"
-source_file="/candidate/src/CommandProcessor/CommandStore.cs"
+candidate_project="/candidate/src/CommandProcessor/CommandProcessor.csproj"
 
-case "$assertion" in
-  duplicate-delivery)
-    if grep -q 'processedCommandIds' "$source_file" && grep -q 'return;' "$source_file"; then
-      exit 0
-    fi
-    echo 'Duplicate command IDs must be ignored.' >&2
-    exit 1
-    ;;
-  concurrent-delivery)
-    if grep -q 'lock (' "$source_file"; then
-      exit 0
-    fi
-    echo 'Command application must be protected for concurrent delivery.' >&2
-    exit 1
-    ;;
-  distinct-commands)
-    if grep -q 'GetBalance(command.AccountId) + command.Amount' "$source_file"; then
-      exit 0
-    fi
-    echo 'Distinct command balance accumulation must remain intact.' >&2
-    exit 1
-    ;;
-  *)
-    echo "Unknown assertion $assertion" >&2
-    exit 2
-    ;;
-esac
+if [ ! -f "$candidate_project" ]; then
+  echo "Candidate project not found: $candidate_project" >&2
+  exit 1
+fi
+
+work_dir="$(mktemp -d)"
+candidate_copy="$work_dir/candidate"
+mkdir -p "$candidate_copy"
+cp -R /candidate/src "$candidate_copy/src"
+find "$candidate_copy" -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
+candidate_project="$candidate_copy/src/CommandProcessor/CommandProcessor.csproj"
+candidate_base_output="$work_dir/candidate-bin/"
+candidate_base_intermediate="$work_dir/candidate-obj/"
+dotnet build "$candidate_project" -c Release \
+  -p:BaseOutputPath="$candidate_base_output" \
+  -p:BaseIntermediateOutputPath="$candidate_base_intermediate" \
+  --nologo
+candidate_dll="$candidate_base_output/Release/net10.0/CommandProcessor.dll"
+
+cat > "$work_dir/ValidatorHarness.csproj" <<EOF
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="CommandProcessor">
+      <HintPath>$candidate_dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
+EOF
+
+cat > "$work_dir/Program.cs" <<'EOF'
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using CommandProcessor;
+
+static void Require(bool condition, string message)
+{
+    if (!condition)
+    {
+        throw new InvalidOperationException(message);
+    }
+}
+
+static void DuplicateDelivery()
+{
+    AccountLedger ledger = new();
+    CommandMessage command = new("cmd-duplicate", "acct-1", 100m);
+
+    ledger.Apply(command);
+    ledger.Apply(command);
+    ledger.Apply(command);
+
+    Require(ledger.GetBalance("acct-1") == 100m, $"Duplicate command changed balance to {ledger.GetBalance("acct-1")}.");
+    Require(ledger.AppliedCommandIds.SequenceEqual(new[] { "cmd-duplicate" }), "Duplicate command ID was recorded more than once.");
+}
+
+static void ConcurrentDelivery()
+{
+    AccountLedger ledger = new();
+    CommandMessage command = new("cmd-concurrent", "acct-2", 25m);
+    Task[] tasks = Enumerable.Range(0, 64).Select(_ => Task.Run(() => ledger.Apply(command))).ToArray();
+
+    Task.WaitAll(tasks);
+
+    Require(ledger.GetBalance("acct-2") == 25m, $"Concurrent duplicate command changed balance to {ledger.GetBalance("acct-2")}.");
+    Require(ledger.AppliedCommandIds.SequenceEqual(new[] { "cmd-concurrent" }), "Concurrent duplicate command ID was recorded more than once.");
+}
+
+static void DistinctCommands()
+{
+    AccountLedger ledger = new();
+
+    ledger.Apply(new("cmd-1", "acct-3", 100m));
+    ledger.Apply(new("cmd-2", "acct-3", -30m));
+    ledger.Apply(new("cmd-3", "acct-3", 12.5m));
+
+    Require(ledger.GetBalance("acct-3") == 82.5m, $"Distinct commands produced balance {ledger.GetBalance("acct-3")}.");
+    Require(ledger.AppliedCommandIds.SequenceEqual(new[] { "cmd-1", "cmd-2", "cmd-3" }), "Distinct command IDs were not preserved in application order.");
+}
+
+string assertion = Environment.GetCommandLineArgs().Length > 1 ? Environment.GetCommandLineArgs()[1] : "";
+switch (assertion)
+{
+    case "duplicate-delivery":
+        DuplicateDelivery();
+        break;
+    case "concurrent-delivery":
+        ConcurrentDelivery();
+        break;
+    case "distinct-commands":
+        DistinctCommands();
+        break;
+    default:
+        Console.Error.WriteLine($"Unknown assertion {assertion}");
+        Environment.Exit(2);
+        break;
+}
+EOF
+
+dotnet run --project "$work_dir/ValidatorHarness.csproj" -- "$assertion"

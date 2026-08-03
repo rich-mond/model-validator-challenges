@@ -10,15 +10,15 @@
   "workspace": {
     "type": "git-bundle",
     "path": "workspace/starter.bundle",
-    "sha256": "c29d2bddc4b3441000c476c57f59354e1241422802e40ae98fc0feb42cd3d279",
-    "baseCommit": "096fa8e0d6cb26f3e40ab75579e4e0e6d29aef7c"
+    "sha256": "830eb2c3a407e8d6ca71bdd2f82d734fe360db56a68e6563b947948f62175515",
+    "baseCommit": "f718161bae02906955ef495425c79d87405867eb"
   },
   "validation": {
     "image": {
       "type": "build",
       "contextPath": "validator",
       "containerfilePath": "validator/Containerfile",
-      "contextSha256": "13b0c44df8bcb69fd2727f661874dd11594a1cc0f13b104255ec93d7b4a45e45"
+      "contextSha256": "c2cd30f0eddaf6e92ac49aa4506900e5a724414da52a016dcffa529d4ea5326e"
     },
     "workspacePath": "/candidate",
     "assertions": [
