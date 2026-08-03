@@ -57,6 +57,8 @@ dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Relea
 
 Verification proves a challenge pack is internally coherent before any model or agent is benchmarked. The starter workspace must fail required assertions, the oracle patch must pass, repeated oracle validation must be stable and known-invalid patches must fail.
 
+Successful verification prints the checks it performed and a short summary: manifest and digest checks, validator calibration, oracle stability and counterexample count.
+
 ## Pack Anatomy
 
 Every challenge pack has the same contract:
@@ -131,7 +133,13 @@ For the .NET challenge:
 dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge ..\model-validator-challenges\dotnet\idempotent-processing --open vscode --output ..\model-validator-runs\idempotent-processing-vscode
 ```
 
-The framework creates the candidate workspace, opens or prints the prompt, waits while you run the selected model or agent, captures the candidate patch, runs this pack's hidden validator and writes the score report under the output directory.
+The framework creates the candidate workspace, opens or prints the prompt, waits while you run the selected model or agent, captures the candidate patch, runs this pack's hidden validator and writes the score report under the output directory. It also prints the score report to the console.
+
+To print the score again later:
+
+```powershell
+dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- results --run ..\model-validator-runs\order-normalization-vscode
+```
 
 For another agent CLI, pass the command after `--`:
 
