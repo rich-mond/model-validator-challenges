@@ -14,6 +14,16 @@ The starter workspace assumes line items already contain integer cent values and
 | `decimal-cents` | requirement | Decimal prices are rounded half up into integer cents and totals are correct |
 | `metadata-and-input-stability` | regression | `order_id` is preserved, `currency` is uppercased and the input event is not mutated |
 
+## Public Self-Check
+
+The materialised starter workspace includes public unit tests. Target agents are instructed to run them before they stop:
+
+```powershell
+python -m unittest discover -s tests
+```
+
+This is a local sanity check. The hidden Docker validator remains the authoritative benchmark result.
+
 ## Verify
 
 ```powershell

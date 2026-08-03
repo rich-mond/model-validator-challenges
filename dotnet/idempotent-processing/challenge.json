@@ -10,8 +10,8 @@
   "workspace": {
     "type": "git-bundle",
     "path": "workspace/starter.bundle",
-    "sha256": "830eb2c3a407e8d6ca71bdd2f82d734fe360db56a68e6563b947948f62175515",
-    "baseCommit": "f718161bae02906955ef495425c79d87405867eb"
+    "sha256": "9834e847b7b6a62ae1960f4f1db17074775850f07e38f80d1ef21b4c557a51ef",
+    "baseCommit": "6d60b69fbef873eae23e3ebaf2d129ac20959a5c"
   },
   "validation": {
     "image": {
@@ -60,6 +60,20 @@
       }
     ]
   },
+  "selfChecks": [
+    {
+      "id": "public-command-processor-checks",
+      "title": "Run the public command processor checks",
+      "command": [
+        "dotnet",
+        "run",
+        "--project",
+        "src/CommandProcessor.Checks/CommandProcessor.Checks.csproj"
+      ],
+      "workingDirectory": ".",
+      "timeoutSeconds": 120
+    }
+  ],
   "limits": {
     "targetTimeoutSeconds": 1800,
     "validatorTimeoutSeconds": 600
