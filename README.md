@@ -97,11 +97,11 @@ For the .NET challenge:
 dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge ..\model-validator-challenges\dotnet\idempotent-processing --open vscode --output ..\model-validator-runs\idempotent-processing-vscode
 ```
 
-The framework creates the candidate workspace, prints the prompt path, opens VS Code when requested, then waits. Use your chosen model or coding-agent UI against the printed workspace, give it the printed prompt, let it edit the workspace and return to the terminal to press Enter. Validation starts only after that.
+The framework creates the candidate workspace, writes `AGENTS.md` and `MODEL_VALIDATOR_TASK.md` into that workspace, opens VS Code when requested, then waits. Use your chosen model or coding-agent UI against the printed workspace and ask it to follow those task files. Return to the terminal and press Enter only after the model has finished. Validation starts after that.
 
-If VS Code cannot be opened automatically, open the printed workspace and prompt manually. The benchmark will still continue when you press Enter.
+If VS Code cannot be opened automatically, open the printed workspace and task file manually. The benchmark will still continue when you press Enter.
 
-After validation, the framework captures the candidate patch, runs this pack's hidden validator, writes detailed reports under the output directory and prints a console-friendly score summary.
+After validation, the framework captures the candidate patch, runs this pack's hidden validator, writes detailed reports under the output directory and prints a console-friendly score summary. The generated `AGENTS.md` and `MODEL_VALIDATOR_TASK.md` files are excluded from candidate scoring.
 
 To print the console score summary again later:
 
