@@ -1,0 +1,92 @@
+{
+  "schemaVersion": "1.0",
+  "challengeId": "checkout-discounts-dotnet",
+  "challengeVersion": "1.0.0",
+  "title": "Checkout discount pricing",
+  "prompt": {
+    "path": "prompt.md",
+    "sha256": "ef3b38aed0ddd4261295d24c16d9d32239911cecf6d5793eac183d0bc31945a9"
+  },
+  "workspace": {
+    "type": "git-bundle",
+    "path": "workspace/starter.bundle",
+    "sha256": "e8a8a7f186729188f01a695f23f52bccce92ee7bc7e9f02397864855215349c3",
+    "baseCommit": "2560eb942a172410343b9f6d576ec0cf2971816d"
+  },
+  "validation": {
+    "image": {
+      "type": "build",
+      "contextPath": "validator",
+      "containerfilePath": "validator/Containerfile",
+      "contextSha256": "a125cb702354d5c7492c91e0d6ab987e8515d8001aa84ec191b3cb4041d30a7e"
+    },
+    "workspacePath": "/candidate",
+    "assertions": [
+      {
+        "id": "tier-and-stackable-coupons",
+        "title": "Tier discounts are applied before stackable coupons",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "tier-and-stackable-coupons"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "non-stackable-best-coupon",
+        "title": "Best non-stackable coupon suppresses stackable coupons",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "non-stackable-best-coupon"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "clock-and-source-boundary",
+        "title": "Coupon validity uses injected clock and source boundary is preserved",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "clock-and-source-boundary"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "dedupe-cap-and-floor",
+        "title": "Duplicate coupons, caps and zero-floor totals are handled",
+        "classification": "regression",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "dedupe-cap-and-floor"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      }
+    ]
+  },
+  "selfChecks": [
+    {
+      "id": "public-checkout-tests",
+      "title": "Run the public checkout pricing tests",
+      "command": [
+        "dotnet",
+        "test",
+        "src/Checkout.Tests/Checkout.Tests.csproj"
+      ],
+      "workingDirectory": ".",
+      "timeoutSeconds": 120
+    }
+  ],
+  "limits": {
+    "targetTimeoutSeconds": 1800,
+    "validatorTimeoutSeconds": 600
+  }
+}

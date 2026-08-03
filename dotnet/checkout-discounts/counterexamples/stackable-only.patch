@@ -1,0 +1,70 @@
+diff --git a/src/Checkout/CheckoutPricingService.cs b/src/Checkout/CheckoutPricingService.cs
+index e24a409..d0fb2c3 100644
+--- a/src/Checkout/CheckoutPricingService.cs
++++ b/src/Checkout/CheckoutPricingService.cs
+@@ -19,34 +19,43 @@ public sealed class CheckoutPricingService
+     public PriceQuote Quote(CustomerProfile customer, IReadOnlyList<CartItem> items, IReadOnlyList<string> couponCodes)
+     {
+         int subtotal = items.Sum(item => catalog[item.Sku] * item.Quantity);
+-        int tierDiscount = 0;
+-        int runningTotal = subtotal;
+-        List<DiscountLine> discounts = new();
+-
+-        foreach (string code in couponCodes)
++        int tierDiscount = CalculatePercentDiscount(subtotal, TierPercent(customer.Tier));
++        int runningTotal = subtotal - tierDiscount;
++        DiscountRule[] activeRules = couponCodes
++            .Where(code => !string.IsNullOrWhiteSpace(code))
++            .Distinct(StringComparer.OrdinalIgnoreCase)
++            .Select(code => rules.TryGetValue(code, out DiscountRule? rule) ? rule : null)
++            .Where(rule => rule is not null && IsActive(rule))
++            .Cast<DiscountRule>()
++            .ToArray();
++
++        List<DiscountLine> discounts = new(activeRules.Length);
++        foreach (DiscountRule rule in activeRules)
+         {
+-            if (!rules.TryGetValue(code, out DiscountRule? rule))
+-            {
+-                continue;
+-            }
+-
+-            if (DateTimeOffset.UtcNow < rule.StartsUtc || DateTimeOffset.UtcNow > rule.EndsUtc)
+-            {
+-                continue;
+-            }
+-
+-            int amount = rule.Kind == DiscountKind.FixedAmount ? rule.Amount : runningTotal * rule.Amount / 100;
+-            if (rule.MaxDiscountCents is int max && amount > max)
+-            {
+-                amount = max;
+-            }
+-
++            int amount = CalculateCouponDiscount(runningTotal, rule);
+             amount = Math.Min(amount, runningTotal);
+             runningTotal -= amount;
+             discounts.Add(new(rule.Code, amount));
+-            break;
+         }
+ 
+         return new(subtotal, tierDiscount, discounts, runningTotal);
+     }
++
++    private bool IsActive(DiscountRule rule) => clock.UtcNow >= rule.StartsUtc && clock.UtcNow <= rule.EndsUtc;
++
++    private static int TierPercent(CustomerTier tier) => tier switch
++    {
++        CustomerTier.Silver => 5,
++        CustomerTier.Gold => 10,
++        _ => 0
++    };
++
++    private static int CalculateCouponDiscount(int basisCents, DiscountRule rule)
++    {
++        int amount = rule.Kind == DiscountKind.FixedAmount ? rule.Amount : CalculatePercentDiscount(basisCents, rule.Amount);
++        return rule.MaxDiscountCents is int max ? Math.Min(amount, max) : amount;
++    }
++
++    private static int CalculatePercentDiscount(int basisCents, int percent) =>
++        (int)decimal.Round(basisCents * percent / 100m, 0, MidpointRounding.AwayFromZero);
+ }

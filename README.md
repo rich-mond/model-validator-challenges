@@ -23,11 +23,12 @@ Keeping those responsibilities separate matters because challenge packs can be w
 | Pack | Language | Complexity | Task | Verification |
 | --- | --- | --- | --- | --- |
 | `dotnet/idempotent-processing` | C# / .NET | Foundation | Make command processing idempotent under duplicate and concurrent delivery | Docker validator checks duplicate delivery, concurrent delivery and distinct-command regression |
+| `dotnet/checkout-discounts` | C# / .NET | Intermediate | Implement deterministic checkout pricing with tier discounts, coupon stacking and clock-bound validity | Docker validator checks tier/coupon behavior, non-stackable choice, clock/source boundary and cap/floor regressions |
 | `python/order-normalization` | Python | Foundation | Normalize inbound order events without mutating input | Docker validator checks duplicate SKU aggregation, decimal cent rounding and metadata/input stability |
 
 Each listed pack is expected to pass `modelval challenge verify` before it is used in a benchmark.
 
-Complexity is separate from language. A language can have foundation, intermediate and advanced packs side by side. The current packs are foundation challenges: useful for smoke testing the workflow and basic model behavior, not for stretching strong agents across large codebases or multi-step design decisions.
+Complexity is separate from language. A language can have foundation, intermediate and advanced packs side by side. Foundation challenges are useful for smoke testing the workflow and basic model behavior; higher-complexity packs should introduce more files, more plausible wrong choices and stronger hidden validation.
 
 See [Challenge Complexity](docs/challenge-complexity.md) for the classification rubric.
 
@@ -56,6 +57,7 @@ Verify both supported packs:
 
 ```powershell
 dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\dotnet\idempotent-processing
+dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\dotnet\checkout-discounts
 dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\python\order-normalization
 ```
 
