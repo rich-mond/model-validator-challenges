@@ -20,12 +20,16 @@ Keeping those responsibilities separate matters because challenge packs can be w
 
 ## Supported Challenge Packs
 
-| Pack | Language | Task | Verification |
-| --- | --- | --- | --- |
-| `dotnet/idempotent-processing` | C# / .NET | Make command processing idempotent under duplicate and concurrent delivery | Docker validator checks duplicate delivery, concurrent delivery and distinct-command regression |
-| `python/order-normalization` | Python | Normalize inbound order events without mutating input | Docker validator checks duplicate SKU aggregation, decimal cent rounding and metadata/input stability |
+| Pack | Language | Complexity | Task | Verification |
+| --- | --- | --- | --- | --- |
+| `dotnet/idempotent-processing` | C# / .NET | Foundation | Make command processing idempotent under duplicate and concurrent delivery | Docker validator checks duplicate delivery, concurrent delivery and distinct-command regression |
+| `python/order-normalization` | Python | Foundation | Normalize inbound order events without mutating input | Docker validator checks duplicate SKU aggregation, decimal cent rounding and metadata/input stability |
 
 Each listed pack is expected to pass `modelval challenge verify` before it is used in a benchmark.
+
+Complexity is separate from language. A language can have foundation, intermediate and advanced packs side by side. The current packs are foundation challenges: useful for smoke testing the workflow and basic model behavior, not for stretching strong agents across large codebases or multi-step design decisions.
+
+See [Challenge Complexity](docs/challenge-complexity.md) for the classification rubric.
 
 ## Fresh Start
 

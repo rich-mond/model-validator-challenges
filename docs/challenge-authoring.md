@@ -34,6 +34,12 @@ Apply repository-level challenge improvements to every supported pack where the 
 
 When a change applies to only some packs, explain the boundary in the PR body. Do not leave one supported pack behind because it was not the pack that exposed the issue.
 
+## Complexity Classification
+
+Every supported pack must have a complexity label in the top-level README and its per-pack README. Complexity is independent of language and follows the rubric in [Challenge Complexity](challenge-complexity.md).
+
+Use the lowest honest level. A simple C# pack and a simple Python pack should both be `Foundation`; a harder C# pack should be a separate challenge pack with a higher complexity label, not an overloaded version of the foundation pack.
+
 ## Manifest
 
 `challenge.json` declares the immutable inputs and validation contract for one pack.
