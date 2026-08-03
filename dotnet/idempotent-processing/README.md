@@ -17,5 +17,5 @@ The starter workspace applies every delivered command. That is wrong when the sa
 ## Verify
 
 ```powershell
-dotnet run --project C:\Work\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path C:\Work\model-validator-challenges\dotnet\idempotent-processing
+dotnet run --project ..\..\..\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path .
 ```

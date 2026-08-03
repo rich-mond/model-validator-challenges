@@ -32,7 +32,9 @@ Each listed pack is expected to pass `modelval challenge verify` before it is us
 Clone the framework and challenge repos side by side:
 
 ```powershell
-cd C:\Work
+$root = Join-Path $HOME "model-validator-work"
+New-Item -ItemType Directory -Force -Path $root | Out-Null
+Set-Location $root
 git clone https://github.com/rich-mond/model-validator.git
 git clone https://github.com/rich-mond/model-validator-challenges.git
 ```
@@ -40,7 +42,7 @@ git clone https://github.com/rich-mond/model-validator-challenges.git
 Build the framework:
 
 ```powershell
-cd C:\Work\model-validator
+Set-Location .\model-validator
 dotnet restore ModelValidator.slnx --locked-mode
 dotnet build ModelValidator.slnx -c Release
 dotnet test ModelValidator.slnx -c Release --no-build
@@ -49,8 +51,8 @@ dotnet test ModelValidator.slnx -c Release --no-build
 Verify both supported packs:
 
 ```powershell
-dotnet run --project C:\Work\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path C:\Work\model-validator-challenges\dotnet\idempotent-processing
-dotnet run --project C:\Work\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path C:\Work\model-validator-challenges\python\order-normalization
+dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\dotnet\idempotent-processing
+dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\python\order-normalization
 ```
 
 Verification proves a challenge pack is internally coherent before any model or agent is benchmarked. The starter workspace must fail required assertions, the oracle patch must pass, repeated oracle validation must be stable and known-invalid patches must fail.
@@ -116,32 +118,25 @@ The framework removes Git remotes from the materialised workspace before target 
 
 ## Run A Benchmark Against A Pack
 
-Most users do not write target JSON or adapter scripts. From the framework repo, run `benchmark` with the challenge path, agent and model:
+Most users do not write target JSON or adapter scripts. From the framework repo, run `benchmark` with the challenge path. Interactive mode lets you choose the model from VS Code or another UI.
 
 ```powershell
-cd C:\Work\model-validator
-dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge C:\Work\model-validator-challenges\python\order-normalization --agent codex --model gpt-5 --output C:\Work\model-validator-runs\codex-gpt5-order-normalization
+Set-Location .\model-validator
+dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge ..\model-validator-challenges\python\order-normalization --open vscode --output ..\model-validator-runs\order-normalization-vscode
 ```
 
 For the .NET challenge:
 
 ```powershell
-dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge C:\Work\model-validator-challenges\dotnet\idempotent-processing --agent codex --model gpt-5 --output C:\Work\model-validator-runs\codex-gpt5-idempotent-processing
+dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge ..\model-validator-challenges\dotnet\idempotent-processing --open vscode --output ..\model-validator-runs\idempotent-processing-vscode
 ```
 
-The framework creates the candidate workspace, runs the selected coding-agent CLI, captures the candidate patch, runs this pack's hidden validator and writes the score report under the output directory.
-
-Built-in framework presets currently support:
-
-| Agent | Command Model Validator Runs |
-| --- | --- |
-| `codex` | `codex exec --model <model> --sandbox workspace-write --ask-for-approval never <prompt>` |
-| `claude` | `claude -p <prompt>` |
+The framework creates the candidate workspace, opens or prints the prompt, waits while you run the selected model or agent, captures the candidate patch, runs this pack's hidden validator and writes the score report under the output directory.
 
 For another agent CLI, pass the command after `--`:
 
 ```powershell
-dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge C:\Work\model-validator-challenges\python\order-normalization --agent custom --provider openai --model gpt-5 --output C:\Work\model-validator-runs\custom-order-normalization -- my-agent run --model {model} --prompt-file {promptPath}
+dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge ..\model-validator-challenges\python\order-normalization --agent codex-cli --provider openai --model gpt-5 --output ..\model-validator-runs\codex-cli-order-normalization -- codex exec --model {model} --sandbox workspace-write --ask-for-approval never {prompt}
 ```
 
 Supported placeholders are `{prompt}`, `{promptPath}`, `{workspace}`, `{output}` and `{model}`.
@@ -154,12 +149,12 @@ For scripted comparisons, a benchmark plan can point at one challenge directory 
 {
   "schemaVersion": "1.0",
   "planId": "first-order-normalization-run",
-  "challengePath": "C:\\Work\\model-validator-challenges\\python\\order-normalization",
+  "challengePath": "<challenge-repo>\\python\\order-normalization",
   "targets": [
-    "C:\\Work\\targets\\codex-gpt-5-default.json"
+    "<targets>\\codex-gpt-5-default.json"
   ],
   "attemptsPerTarget": 1,
-  "outputPath": "C:\\Work\\model-validator-runs\\first-order-normalization-run",
+  "outputPath": "<runs>\\first-order-normalization-run",
   "execution": {
     "maximumParallelTargets": 1,
     "retainWorkspaces": false
@@ -194,7 +189,7 @@ A complete pack needs:
 After adding or changing a pack, run:
 
 ```powershell
-dotnet run --project C:\Work\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path C:\Work\model-validator-challenges\<language>\<challenge-id>
+dotnet run --project ..\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path .\<language>\<challenge-id>
 ```
 
 ## Generated Outputs
