@@ -1,0 +1,157 @@
+#!/bin/sh
+set -eu
+
+assertion="${1:-}"
+candidate_project="/candidate/src/Checkout/Checkout.csproj"
+
+if [ ! -f "$candidate_project" ]; then
+  echo "Candidate project not found: $candidate_project" >&2
+  exit 1
+fi
+
+if [ "$assertion" = "clock-and-source-boundary" ]; then
+  if grep -R "DateTimeOffset\\.UtcNow\\|DateTime\\.UtcNow\\|DateTime\\.Now\\|DateTimeOffset\\.Now" /candidate/src/Checkout --include='*.cs'; then
+    echo "Candidate source must use injected IClock.UtcNow, not wall-clock APIs." >&2
+    exit 1
+  fi
+fi
+
+work_dir="$(mktemp -d)"
+candidate_copy="$work_dir/candidate"
+mkdir -p "$candidate_copy"
+cp -R /candidate/src "$candidate_copy/src"
+find "$candidate_copy" -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
+candidate_project="$candidate_copy/src/Checkout/Checkout.csproj"
+candidate_base_output="$work_dir/candidate-bin/"
+candidate_base_intermediate="$work_dir/candidate-obj/"
+dotnet build "$candidate_project" -c Release \
+  -p:BaseOutputPath="$candidate_base_output" \
+  -p:BaseIntermediateOutputPath="$candidate_base_intermediate" \
+  --nologo
+candidate_dll="$candidate_base_output/Release/net10.0/Checkout.dll"
+
+cat > "$work_dir/ValidatorHarness.csproj" <<EOF
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Checkout">
+      <HintPath>$candidate_dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
+EOF
+
+cat > "$work_dir/Program.cs" <<'EOF'
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Checkout;
+
+static void Require(bool condition, string message)
+{
+    if (!condition)
+    {
+        throw new InvalidOperationException(message);
+    }
+}
+
+static CheckoutPricingService CreateService(DateTimeOffset now) => new(
+    new FixedClock(now),
+    new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["SKU-BOOK"] = 2000,
+        ["SKU-PEN"] = 500,
+        ["SKU-BAG"] = 12000,
+        ["SKU-STICKER"] = 75,
+        ["SKU-MUG"] = 1500
+    },
+    new[]
+    {
+        new DiscountRule("SAVE10", DiscountKind.Percent, 10, true, new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), new(2026, 12, 31, 23, 59, 59, TimeSpan.Zero), 2000),
+        new DiscountRule("WELCOME500", DiscountKind.FixedAmount, 500, true, new(2025, 1, 1, 0, 0, 0, TimeSpan.Zero), new(2026, 12, 31, 23, 59, 59, TimeSpan.Zero), null),
+        new DiscountRule("BIGSAVE", DiscountKind.FixedAmount, 2500, false, new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), new(2026, 12, 31, 23, 59, 59, TimeSpan.Zero), null),
+        new DiscountRule("VIP20", DiscountKind.Percent, 20, false, new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), new(2026, 12, 31, 23, 59, 59, TimeSpan.Zero), 1800),
+        new DiscountRule("EXPIRED", DiscountKind.FixedAmount, 9999, false, new(2024, 1, 1, 0, 0, 0, TimeSpan.Zero), new(2024, 12, 31, 23, 59, 59, TimeSpan.Zero), null),
+        new DiscountRule("FUTURE", DiscountKind.FixedAmount, 9999, false, new(2027, 1, 1, 0, 0, 0, TimeSpan.Zero), new(2027, 12, 31, 23, 59, 59, TimeSpan.Zero), null),
+        new DiscountRule("FREE", DiscountKind.FixedAmount, 5000, true, new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero), new(2026, 12, 31, 23, 59, 59, TimeSpan.Zero), null)
+    });
+
+static void RequireQuote(PriceQuote quote, int subtotal, int tierDiscount, int total, params DiscountLine[] discounts)
+{
+    Require(quote.SubtotalCents == subtotal, $"Subtotal {quote.SubtotalCents} != {subtotal}.");
+    Require(quote.TierDiscountCents == tierDiscount, $"Tier discount {quote.TierDiscountCents} != {tierDiscount}.");
+    Require(quote.TotalCents == total, $"Total {quote.TotalCents} != {total}.");
+    Require(quote.Discounts.SequenceEqual(discounts), "Discount lines did not match expected values.");
+}
+
+static void TierAndStackableCoupons()
+{
+    PriceQuote quote = CreateService(new(2026, 6, 1, 0, 0, 0, TimeSpan.Zero)).Quote(
+        new("customer-1", CustomerTier.Gold),
+        new[] { new CartItem("SKU-BOOK", 2), new CartItem("SKU-PEN", 3) },
+        new[] { "save10", "WELCOME500", "UNKNOWN" });
+
+    RequireQuote(quote, 5500, 550, 3955, new DiscountLine("SAVE10", 495), new DiscountLine("WELCOME500", 500));
+}
+
+static void NonStackableBestCoupon()
+{
+    PriceQuote quote = CreateService(new(2026, 6, 1, 0, 0, 0, TimeSpan.Zero)).Quote(
+        new("customer-2", CustomerTier.Silver),
+        new[] { new CartItem("SKU-BAG", 1) },
+        new[] { "SAVE10", "VIP20", "BIGSAVE" });
+
+    RequireQuote(quote, 12000, 600, 8900, new DiscountLine("BIGSAVE", 2500));
+}
+
+static void ClockAndSourceBoundary()
+{
+    PriceQuote quote = CreateService(new(2026, 6, 1, 0, 0, 0, TimeSpan.Zero)).Quote(
+        new("customer-3", CustomerTier.Bronze),
+        new[] { new CartItem("SKU-MUG", 1) },
+        new[] { "EXPIRED", "FUTURE", "WELCOME500" });
+
+    RequireQuote(quote, 1500, 0, 1000, new DiscountLine("WELCOME500", 500));
+}
+
+static void DedupeCapAndFloor()
+{
+    PriceQuote quote = CreateService(new(2026, 6, 1, 0, 0, 0, TimeSpan.Zero)).Quote(
+        new("customer-4", CustomerTier.Silver),
+        new[] { new CartItem("SKU-STICKER", 3) },
+        new[] { "SAVE10", "save10", "FREE" });
+
+    RequireQuote(quote, 225, 11, 0, new DiscountLine("SAVE10", 21), new DiscountLine("FREE", 193));
+}
+
+string assertion = Environment.GetCommandLineArgs().Length > 1 ? Environment.GetCommandLineArgs()[1] : "";
+switch (assertion)
+{
+    case "tier-and-stackable-coupons":
+        TierAndStackableCoupons();
+        break;
+    case "non-stackable-best-coupon":
+        NonStackableBestCoupon();
+        break;
+    case "clock-and-source-boundary":
+        ClockAndSourceBoundary();
+        break;
+    case "dedupe-cap-and-floor":
+        DedupeCapAndFloor();
+        break;
+    default:
+        Console.Error.WriteLine($"Unknown assertion {assertion}");
+        Environment.Exit(2);
+        break;
+}
+EOF
+
+dotnet run --project "$work_dir/ValidatorHarness.csproj" -- "$assertion"

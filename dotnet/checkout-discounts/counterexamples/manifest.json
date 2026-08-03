@@ -1,0 +1,28 @@
+{
+  "counterexamples": [
+    {
+      "id": "noop",
+      "path": "noop.patch",
+      "expectedFailedAssertions": [
+        "tier-and-stackable-coupons",
+        "non-stackable-best-coupon",
+        "clock-and-source-boundary",
+        "dedupe-cap-and-floor"
+      ]
+    },
+    {
+      "id": "wall-clock-time",
+      "path": "wall-clock-time.patch",
+      "expectedFailedAssertions": [
+        "clock-and-source-boundary"
+      ]
+    },
+    {
+      "id": "stackable-only",
+      "path": "stackable-only.patch",
+      "expectedFailedAssertions": [
+        "non-stackable-best-coupon"
+      ]
+    }
+  ]
+}

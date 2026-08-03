@@ -25,4 +25,5 @@ When a pack changes, re-check the complexity label. If public self-checks or sta
 | Pack | Language | Complexity | Reason |
 | --- | --- | --- | --- |
 | `dotnet/idempotent-processing` | C# / .NET | Foundation | Single-library behavior fix with a public test project and hidden validator coverage |
+| `dotnet/checkout-discounts` | C# / .NET | Intermediate | Multi-file pricing task with tier discounts, coupon stacking, injected-clock validity and hidden source-boundary validation |
 | `python/order-normalization` | Python | Foundation | Single-function normalization task with public unit tests and hidden validator coverage |
