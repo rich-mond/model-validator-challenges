@@ -28,6 +28,12 @@ A complete challenge pack lives under a language or ecosystem folder:
 
 The language folder is catalog organization only. The framework does not infer behavior from the folder name. The `challenge.json` manifest is the contract.
 
+## Catalog-Wide Consistency
+
+Apply repository-level challenge improvements to every supported pack where the change applies. This includes manifest fields, public self-checks, starter-workspace hygiene, generated-output ignores, line-ending rules, README structure, validator behavior and verification documentation.
+
+When a change applies to only some packs, explain the boundary in the PR body. Do not leave one supported pack behind because it was not the pack that exposed the issue.
+
 ## Manifest
 
 `challenge.json` declares the immutable inputs and validation contract for one pack.
