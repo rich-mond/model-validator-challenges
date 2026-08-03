@@ -114,9 +114,41 @@ The target agent does not receive:
 
 The framework removes Git remotes from the materialised workspace before target execution.
 
-## How A Benchmark Uses A Pack
+## Run A Benchmark Against A Pack
 
-A benchmark plan points at one challenge directory and one or more target configuration files:
+Most users do not write target JSON or adapter scripts. From the framework repo, run `benchmark` with the challenge path, agent and model:
+
+```powershell
+cd C:\Work\model-validator
+dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge C:\Work\model-validator-challenges\python\order-normalization --agent codex --model gpt-5 --output C:\Work\model-validator-runs\codex-gpt5-order-normalization
+```
+
+For the .NET challenge:
+
+```powershell
+dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge C:\Work\model-validator-challenges\dotnet\idempotent-processing --agent codex --model gpt-5 --output C:\Work\model-validator-runs\codex-gpt5-idempotent-processing
+```
+
+The framework creates the candidate workspace, runs the selected coding-agent CLI, captures the candidate patch, runs this pack's hidden validator and writes the score report under the output directory.
+
+Built-in framework presets currently support:
+
+| Agent | Command Model Validator Runs |
+| --- | --- |
+| `codex` | `codex exec --model <model> --sandbox workspace-write --ask-for-approval never <prompt>` |
+| `claude` | `claude -p <prompt>` |
+
+For another agent CLI, pass the command after `--`:
+
+```powershell
+dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge C:\Work\model-validator-challenges\python\order-normalization --agent custom --provider openai --model gpt-5 --output C:\Work\model-validator-runs\custom-order-normalization -- my-agent run --model {model} --prompt-file {promptPath}
+```
+
+Supported placeholders are `{prompt}`, `{promptPath}`, `{workspace}`, `{output}` and `{model}`.
+
+## Advanced Plan-Based Use
+
+For scripted comparisons, a benchmark plan can point at one challenge directory and one or more target configuration files:
 
 ```json
 {
