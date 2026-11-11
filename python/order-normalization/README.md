@@ -31,3 +31,9 @@ This is a local sanity check. The hidden Docker validator remains the authoritat
 ```powershell
 dotnet run --project ..\..\..\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path .
 ```
+
+## Validator reliability (1.0.1)
+
+The duplicate-lines assertion checks normalized quantities, unit cents, ordering and total. Separate checks cover half-up rounding and input mutation. Pricing ambiguity remains unresolved for duplicate normalized SKUs with different unit prices: the oracle keeps the first price, but the prompt and public tests do not establish that rule. Qualification uses equal-price duplicates; no pricing rule has been added.
+
+Candidate calls run in a worker process and the supervisor compares returned data. Calibration includes successful early termination; Python also includes immediate process termination. Shared-container interference is outside this protection. Starter bundles and oracle patches are unchanged.

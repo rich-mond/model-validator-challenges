@@ -23,6 +23,30 @@
       "expectedFailedAssertions": [
         "non-stackable-best-coupon"
       ]
+    },
+    {
+      "id": "successful-process-exit",
+      "path": "successful-process-exit.patch",
+      "expectedFailedAssertions": [
+        "tier-and-stackable-coupons",
+        "non-stackable-best-coupon",
+        "clock-and-source-boundary",
+        "dedupe-cap-and-floor"
+      ]
+    },
+    {
+      "id": "bankers-rounding",
+      "path": "bankers-rounding.patch",
+      "expectedFailedAssertions": [
+        "dedupe-cap-and-floor"
+      ]
+    },
+    {
+      "id": "exclusive-clock-boundaries",
+      "path": "exclusive-clock-boundaries.patch",
+      "expectedFailedAssertions": [
+        "clock-and-source-boundary"
+      ]
     }
   ]
 }

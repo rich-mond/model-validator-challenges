@@ -9,13 +9,15 @@ ASSERTION = sys.argv[1] if len(sys.argv) > 1 else ""
 CANDIDATE = Path("/candidate/src/order_normalizer.py")
 
 
-def load_module():
-    spec = importlib.util.spec_from_file_location("order_normalizer", CANDIDATE)
-    if spec is None or spec.loader is None:
-        raise AssertionError("Could not load src/order_normalizer.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+def normalize(event):
+    import json
+    import subprocess
+    completed = subprocess.run([sys.executable, "/validator/worker.py"], input=json.dumps(event),
+                               text=True, capture_output=True, timeout=30)
+    if completed.returncode != 0:
+        raise AssertionError(f"Candidate terminated abnormally ({completed.returncode}): {completed.stderr}")
+    response = json.loads(completed.stdout)
+    return response["result"], response["event"]
 
 
 def sample_event():
@@ -32,11 +34,12 @@ def sample_event():
 
 
 def assert_duplicate_lines():
-    result = load_module().normalize_order(sample_event())
+    result = normalize(sample_event())[0]
     assert result["lines"] == [
         {"sku": "GADGET", "quantity": 1, "unit_price_cents": 550},
         {"sku": "WIDGET", "quantity": 5, "unit_price_cents": 1001},
     ], f"unexpected normalized lines: {result['lines']!r}"
+    assert result["total_cents"] == 5555, result
 
 
 def assert_decimal_cents():
@@ -48,7 +51,7 @@ def assert_decimal_cents():
             {"sku": "EXACT", "quantity": 1, "unit_price": "2.25"},
         ],
     }
-    result = load_module().normalize_order(event)
+    result = normalize(event)[0]
     assert result["lines"][0]["unit_price_cents"] == 225, result
     assert result["lines"][1]["unit_price_cents"] == 101, result
     assert result["total_cents"] == 427, result
@@ -57,8 +60,8 @@ def assert_decimal_cents():
 def assert_metadata_and_input_stability():
     event = sample_event()
     original = copy.deepcopy(event)
-    result = load_module().normalize_order(event)
-    assert event == original, "normalize_order must not mutate the input event"
+    result, after = normalize(event)
+    assert after == original, "normalize_order must not mutate the input event"
     assert result["order_id"] == "ORD-1001", result
     assert result["currency"] == "GBP", result
 

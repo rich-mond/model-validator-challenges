@@ -12,8 +12,21 @@ on:
 
 jobs:
   verify-challenges:
-    name: verify challenge packs
+    name: verify ${{ matrix.id }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: idempotent-processing
+            path: dotnet/idempotent-processing
+          - id: checkout-discounts
+            path: dotnet/checkout-discounts
+          - id: order-normalization
+            path: python/order-normalization
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - name: Checkout challenge catalog
@@ -25,7 +38,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: rich-mond/model-validator
-          ref: develop
+          ref: 1f78ccb5b95cee3586150b74f5af85138f82ffe5
           path: model-validator
 
       - name: Setup .NET
@@ -39,16 +52,41 @@ jobs:
 
       - name: Build framework
         working-directory: model-validator
-        run: dotnet build ModelValidator.slnx -c Release --no-restore
+        run: dotnet build ModelValidator.slnx -c Release --no-restore -warnaserror
 
-      - name: Verify .NET idempotent processing pack
-        working-directory: model-validator
-        run: dotnet run --project src/ModelValidator.Cli/ModelValidator.Cli.csproj -c Release --no-build -- challenge verify --path "$GITHUB_WORKSPACE/model-validator-challenges/dotnet/idempotent-processing"
+      - name: Record qualified revisions
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/qualification"
+          echo "Framework: $(git -C model-validator rev-parse HEAD)" | tee "$RUNNER_TEMP/qualification/revisions.txt"
+          echo "Challenges: $(git -C model-validator-challenges rev-parse HEAD)" | tee -a "$RUNNER_TEMP/qualification/revisions.txt"
+          cat "$RUNNER_TEMP/qualification/revisions.txt" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Verify Python order normalization pack
+      - name: Verify challenge pack
         working-directory: model-validator
-        run: dotnet run --project src/ModelValidator.Cli/ModelValidator.Cli.csproj -c Release --no-build -- challenge verify --path "$GITHUB_WORKSPACE/model-validator-challenges/python/order-normalization"
+        run: dotnet run --project src/ModelValidator.Cli/ModelValidator.Cli.csproj -c Release --no-build -- challenge verify --path "$GITHUB_WORKSPACE/model-validator-challenges/${{ matrix.path }}" | tee "$RUNNER_TEMP/qualification/${{ matrix.id }}.log"
 
       - name: Ensure generated verification output is ignored
         working-directory: model-validator-challenges
-        run: git status --short
+        if: always()
+        shell: bash
+        run: |
+          status="$(git status --porcelain --untracked-files=all)"
+          if [[ -n "$status" ]]; then
+            printf '%s\n' "$status"
+            exit 1
+          fi
+
+      - name: Record qualification result
+        if: always()
+        run: |
+          echo "Qualification: ${{ job.status }}" | tee "$RUNNER_TEMP/qualification/result.txt" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload qualification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: challenge-qualification-${{ matrix.id }}
+          path: |
+            ${{ runner.temp }}/qualification
+            model-validator-challenges/**/verification/pack-verification.json

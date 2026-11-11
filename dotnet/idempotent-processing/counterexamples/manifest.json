@@ -21,6 +21,22 @@
       "expectedFailedAssertions": [
         "distinct-commands"
       ]
+    },
+    {
+      "id": "successful-process-exit",
+      "path": "successful-process-exit.patch",
+      "expectedFailedAssertions": [
+        "duplicate-delivery",
+        "concurrent-delivery",
+        "distinct-commands"
+      ]
+    },
+    {
+      "id": "concurrent-lost-update",
+      "path": "concurrent-lost-update.patch",
+      "expectedFailedAssertions": [
+        "concurrent-delivery"
+      ]
     }
   ]
 }

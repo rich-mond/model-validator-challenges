@@ -1,8 +1,7 @@
 * text=auto
 *.json text eol=lf
 *.md text eol=lf
-*.patch text eol=lf
+*.patch text eol=lf whitespace=-blank-at-eol
 *.sh text eol=lf
-**/validator/run text eol=lf
-**/validator/Containerfile text eol=lf
+**/validator/** text eol=lf
 *.bundle binary
