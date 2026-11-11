@@ -1,0 +1,27 @@
+diff --git a/src/OrderLifecycle/OrderRepository.cs b/src/OrderLifecycle/OrderRepository.cs
+index e0cbc4a..b79f13c 100644
+--- a/src/OrderLifecycle/OrderRepository.cs
++++ b/src/OrderLifecycle/OrderRepository.cs
+@@ -42,7 +42,7 @@ public sealed class OrderRepository(OrderDatabase database) : IOrderRepository
+         using var transaction = connection.BeginTransaction();
+         using var command = connection.CreateCommand();
+         command.Transaction = transaction;
+-        command.CommandText = "UPDATE orders SET status=$next WHERE id=$id";
++        command.CommandText = "UPDATE orders SET status=$next WHERE id=$id AND status='Pending'";
+         command.Parameters.AddWithValue("$next", next.ToString());
+         command.Parameters.AddWithValue("$id", id);
+         int changed = command.ExecuteNonQuery();
+@@ -50,7 +50,12 @@ public sealed class OrderRepository(OrderDatabase database) : IOrderRepository
+         {
+             AuditLog.Append(connection, transaction, id, next);
+         }
++        using var final = connection.CreateCommand();
++        final.Transaction = transaction;
++        final.CommandText = "SELECT status FROM orders WHERE id=$id";
++        final.Parameters.AddWithValue("$id", id);
++        bool completed = string.Equals(final.ExecuteScalar() as string, next.ToString(), StringComparison.Ordinal);
+         transaction.Commit();
+-        return Task.FromResult(changed == 1);
++        return Task.FromResult(completed);
+     }
+ }

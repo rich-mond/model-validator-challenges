@@ -1,0 +1,189 @@
+diff --git a/src/CustomerAddresses/AddressRepository.cs b/src/CustomerAddresses/AddressRepository.cs
+new file mode 100644
+index 0000000..e5a6144
+--- /dev/null
++++ b/src/CustomerAddresses/AddressRepository.cs
+@@ -0,0 +1,61 @@
++using Microsoft.Data.Sqlite;
++
++namespace CustomerAddresses;
++
++public sealed class AddressRepository(CustomerDatabase database)
++{
++    public IReadOnlyList<CustomerAddress> ForCustomer(string customerId)
++    {
++        using var connection = database.Open();
++        using var command = Sql.Command(connection, null, """
++            SELECT id,customer_id,line1,city,postal_code,country_code,is_primary
++            FROM customer_addresses WHERE customer_id=$customer ORDER BY id
++            """, ("$customer", customerId));
++        using var reader = command.ExecuteReader();
++        List<CustomerAddress> result = [];
++        while (reader.Read())
++        {
++            result.Add(new(reader.GetString(0), reader.GetString(1), reader.GetString(2),
++                reader.GetString(3), reader.GetString(4), reader.GetString(5), reader.GetBoolean(6)));
++        }
++        return result;
++    }
++
++    public CustomerAddress Add(string customerId, Address address, bool makePrimary = false)
++    {
++        AddressRules.Validate(address);
++        using var connection = database.Open();
++        using var transaction = connection.BeginTransaction();
++        using var exists = Sql.Command(connection, transaction,
++            "SELECT COUNT(*) FROM customers WHERE id=$id", ("$id", customerId));
++        if ((long)exists.ExecuteScalar()! == 0)
++            throw new ArgumentException("Unknown customer.", nameof(customerId));
++        using var count = Sql.Command(connection, transaction,
++            "SELECT COUNT(*) FROM customer_addresses WHERE customer_id=$id", ("$id", customerId));
++        bool primary = makePrimary;
++        if (primary)
++            Sql.Execute(connection, transaction, "UPDATE customer_addresses SET is_primary=0 WHERE customer_id=$id", ("$id", customerId));
++        string id = Guid.NewGuid().ToString("N");
++        Sql.Execute(connection, transaction, """
++            INSERT INTO customer_addresses(id,customer_id,line1,city,postal_code,country_code,is_primary)
++            VALUES($id,$customer,$line,$city,$postal,$country,$primary)
++            """, ("$id", id), ("$customer", customerId), ("$line", address.Line1),
++            ("$city", address.City), ("$postal", address.PostalCode), ("$country", address.CountryCode), ("$primary", primary));
++        transaction.Commit();
++        return new(id, customerId, address.Line1, address.City, address.PostalCode, address.CountryCode, primary);
++    }
++
++    public bool SetPrimary(string customerId, string addressId)
++    {
++        using var connection = database.Open();
++        using var transaction = connection.BeginTransaction();
++        using var exists = Sql.Command(connection, transaction,
++            "SELECT COUNT(*) FROM customer_addresses WHERE customer_id=$customer AND id=$id",
++            ("$customer", customerId), ("$id", addressId));
++        if ((long)exists.ExecuteScalar()! == 0) return false;
++        Sql.Execute(connection, transaction, "UPDATE customer_addresses SET is_primary=0 WHERE customer_id=$customer", ("$customer", customerId));
++        Sql.Execute(connection, transaction, "UPDATE customer_addresses SET is_primary=1 WHERE id=$id", ("$id", addressId));
++        transaction.Commit();
++        return true;
++    }
++}
+diff --git a/src/CustomerAddresses/CustomerRepository.cs b/src/CustomerAddresses/CustomerRepository.cs
+index 63571e9..150863d 100644
+--- a/src/CustomerAddresses/CustomerRepository.cs
++++ b/src/CustomerAddresses/CustomerRepository.cs
+@@ -6,7 +6,7 @@ public sealed class CustomerRepository(CustomerDatabase database)
+     {
+         using var connection = database.Open();
+         using var command = Sql.Command(connection, null,
+-            "SELECT id,name,line1,city,postal_code,country_code FROM customers WHERE id=$id", ("$id", id));
++            "SELECT c.id,c.name,a.line1,a.city,a.postal_code,a.country_code FROM customers c LEFT JOIN customer_addresses a ON a.customer_id=c.id AND a.is_primary=1 WHERE c.id=$id", ("$id", id));
+         using var reader = command.ExecuteReader();
+         if (!reader.Read())
+         {
+@@ -22,11 +22,17 @@ public sealed class CustomerRepository(CustomerDatabase database)
+         AddressRules.ValidateCustomer(id, name);
+         if (address is not null) AddressRules.Validate(address);
+         using var connection = database.Open();
+-        Sql.Execute(connection, null, """
+-            INSERT INTO customers(id,name,line1,city,postal_code,country_code)
+-            VALUES($id,$name,$line,$city,$postal,$country)
+-            """, ("$id", id), ("$name", name), ("$line", address?.Line1),
+-            ("$city", address?.City), ("$postal", address?.PostalCode), ("$country", address?.CountryCode));
++        using var transaction = connection.BeginTransaction();
++        Sql.Execute(connection, transaction, "INSERT INTO customers(id,name) VALUES($id,$name)", ("$id", id), ("$name", name));
++        if (address is not null)
++        {
++            Sql.Execute(connection, transaction, """
++                INSERT INTO customer_addresses(id,customer_id,line1,city,postal_code,country_code,is_primary)
++                VALUES($address,$id,$line,$city,$postal,$country,1)
++                """, ("$address", Guid.NewGuid().ToString("N")), ("$id", id), ("$line", address.Line1),
++                ("$city", address.City), ("$postal", address.PostalCode), ("$country", address.CountryCode));
++        }
++        transaction.Commit();
+     }
+ 
+     public bool Rename(string id, string name)
+@@ -40,10 +46,18 @@ public sealed class CustomerRepository(CustomerDatabase database)
+     public bool SetAddress(string id, Address address)
+     {
+         AddressRules.Validate(address);
++        if (Find(id) is null) return false;
++        var addresses = new AddressRepository(database);
++        var primary = addresses.ForCustomer(id).SingleOrDefault(a => a.IsPrimary);
++        if (primary is null)
++        {
++            addresses.Add(id, address);
++            return true;
++        }
+         using var connection = database.Open();
+         return Sql.Execute(connection, null, """
+-            UPDATE customers SET line1=$line,city=$city,postal_code=$postal,country_code=$country WHERE id=$id
+-            """, ("$id", id), ("$line", address.Line1), ("$city", address.City),
++            UPDATE customer_addresses SET line1=$line,city=$city,postal_code=$postal,country_code=$country WHERE id=$id
++            """, ("$id", primary.Id), ("$line", address.Line1), ("$city", address.City),
+             ("$postal", address.PostalCode), ("$country", address.CountryCode)) == 1;
+     }
+ }
+diff --git a/src/CustomerAddresses/CustomerService.cs b/src/CustomerAddresses/CustomerService.cs
+index aab90f4..d8a99dc 100644
+--- a/src/CustomerAddresses/CustomerService.cs
++++ b/src/CustomerAddresses/CustomerService.cs
+@@ -2,8 +2,18 @@ namespace CustomerAddresses;
+ 
+ public sealed class CustomerService(CustomerDatabase database)
+ {
++    private readonly AddressRepository addresses = new(database);
+     private readonly CustomerRepository customers = new(database);
+ 
++    public IReadOnlyList<CustomerAddress> GetAddresses(string id) => addresses.ForCustomer(id);
++
++    public CustomerAddress AddAddress(string id, Address address, bool makePrimary = false) =>
++        addresses.Add(id, address, makePrimary);
++
++    public bool SetPrimaryAddress(string id, string addressId) => addresses.SetPrimary(id, addressId);
++
++    public CustomerAddress? GetPrimaryAddress(string id) => addresses.ForCustomer(id).SingleOrDefault(a => a.IsPrimary);
++
+     public CustomerView? GetCustomer(string id) => customers.Find(id);
+ 
+     public void CreateCustomer(string id, string name, Address? address) =>
+diff --git a/src/CustomerAddresses/DatabaseMigrator.cs b/src/CustomerAddresses/DatabaseMigrator.cs
+index 7056941..6b5daa0 100644
+--- a/src/CustomerAddresses/DatabaseMigrator.cs
++++ b/src/CustomerAddresses/DatabaseMigrator.cs
+@@ -24,6 +24,25 @@ public sealed class DatabaseMigrator(CustomerDatabase database)
+                 INSERT INTO schema_versions(version) VALUES (1);
+                 """);
+         }
++        if (version < 2)
++        {
++            Sql.Execute(connection, transaction, """
++                CREATE TABLE customer_addresses (
++                    id TEXT PRIMARY KEY,
++                    customer_id TEXT NOT NULL REFERENCES customers(id),
++                    line1 TEXT NOT NULL,
++                    city TEXT NOT NULL,
++                    postal_code TEXT NOT NULL,
++                    country_code TEXT NOT NULL,
++                    is_primary INTEGER NOT NULL CHECK(is_primary IN (0,1))
++                );
++                CREATE UNIQUE INDEX ux_customer_primary ON customer_addresses(customer_id) WHERE is_primary=1;
++                INSERT INTO customer_addresses(id,customer_id,line1,city,postal_code,country_code,is_primary)
++                SELECT 'migrated-' || id,id,line1,city,postal_code,country_code,1
++                FROM customers WHERE line1 IS NOT NULL;
++                INSERT INTO schema_versions(version) VALUES (2);
++                """);
++        }
+         transaction.Commit();
+     }
+ }
+diff --git a/src/CustomerAddresses/Models.cs b/src/CustomerAddresses/Models.cs
+index 4832319..de50524 100644
+--- a/src/CustomerAddresses/Models.cs
++++ b/src/CustomerAddresses/Models.cs
+@@ -3,3 +3,7 @@ namespace CustomerAddresses;
+ public sealed record Address(string Line1, string City, string PostalCode, string CountryCode);
+ 
+ public sealed record CustomerView(string Id, string Name, Address? Address);
++
++
++public sealed record CustomerAddress(string Id, string CustomerId, string Line1,
++    string City, string PostalCode, string CountryCode, bool IsPrimary);

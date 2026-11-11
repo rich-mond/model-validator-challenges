@@ -24,6 +24,12 @@ jobs:
             path: dotnet/checkout-discounts
           - id: order-normalization
             path: python/order-normalization
+          - id: order-lifecycle-regression
+            path: dotnet/order-lifecycle-regression
+          - id: order-search
+            path: dotnet/order-search
+          - id: customer-address-migration
+            path: dotnet/customer-address-migration
     defaults:
       run:
         shell: bash

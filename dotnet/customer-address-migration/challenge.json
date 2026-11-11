@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "1.0",
+  "challengeId": "customer-address-migration-dotnet",
+  "challengeVersion": "1.0.0",
+  "title": "Customer Address Migration",
+  "prompt": {
+    "path": "prompt.md",
+    "sha256": "90aee0f682ae1c9bdfbc4d987ee99338674dd4c0fb10be09b4be7b17d355d4e5"
+  },
+  "workspace": {
+    "type": "git-bundle",
+    "path": "workspace/starter.bundle",
+    "sha256": "b18326a505d1d5ef9915f237f1b662a304b72a7bb30d893472b605efa4ba726b",
+    "baseCommit": "7b3b4d1efd65e162a108a3407ce3aa276c0b020e"
+  },
+  "validation": {
+    "image": {
+      "type": "build",
+      "contextPath": "validator",
+      "containerfilePath": "validator/Containerfile",
+      "contextSha256": "12ceee1303f4d29af1ca6258b2a3231b99a9ab57d44193cc13ccb7f908215fa4"
+    },
+    "workspacePath": "/candidate",
+    "assertions": [
+      {
+        "id": "populated-upgrade",
+        "title": "Populated Upgrade",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "populated-upgrade"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "address-operations",
+        "title": "Address Operations",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "address-operations"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "primary-invariants",
+        "title": "Primary Invariants",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "primary-invariants"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "transactional-upgrade",
+        "title": "Transactional Upgrade",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "transactional-upgrade"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "fresh-database",
+        "title": "Fresh Database",
+        "classification": "regression",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "fresh-database"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      }
+    ]
+  },
+  "selfChecks": [
+    {
+      "id": "public-regressions",
+      "title": "Run existing public regression checks",
+      "command": [
+        "dotnet",
+        "run",
+        "--project",
+        "tests/PublicChecks/PublicChecks.csproj",
+        "-c",
+        "Release"
+      ],
+      "workingDirectory": ".",
+      "timeoutSeconds": 180
+    }
+  ],
+  "limits": {
+    "targetTimeoutSeconds": 1800,
+    "validatorTimeoutSeconds": 120
+  }
+}

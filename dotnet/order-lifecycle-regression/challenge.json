@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "1.0",
+  "challengeId": "order-lifecycle-regression-dotnet",
+  "challengeVersion": "1.0.0",
+  "title": "Order Lifecycle Regression",
+  "prompt": {
+    "path": "prompt.md",
+    "sha256": "ad9bb0c90b523cc0c8a42e8a68b9bd0c24779018cfd022117377954c13ba0508"
+  },
+  "workspace": {
+    "type": "git-bundle",
+    "path": "workspace/starter.bundle",
+    "sha256": "fa4b851564717ef3ca6949295eb0d772cc3e8d43c7b12533214611aec69c088d",
+    "baseCommit": "645882121d9ed0b7f71c01a3ec61d32536ea9154"
+  },
+  "validation": {
+    "image": {
+      "type": "build",
+      "contextPath": "validator",
+      "containerfilePath": "validator/Containerfile",
+      "contextSha256": "1337ad4210c30256331a5a8aa7ee44b6d00b721cc866a8b9d514d386aa2d916f"
+    },
+    "workspacePath": "/candidate",
+    "assertions": [
+      {
+        "id": "ordinary-transitions",
+        "title": "Ordinary Transitions",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "ordinary-transitions"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "retry-and-guard",
+        "title": "Retry And Guard",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "retry-and-guard"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "concurrent-transition",
+        "title": "Concurrent Transition",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "concurrent-transition"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "existing-behaviour",
+        "title": "Existing Behaviour",
+        "classification": "regression",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "existing-behaviour"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      }
+    ]
+  },
+  "selfChecks": [
+    {
+      "id": "public-regressions",
+      "title": "Run existing public regression checks",
+      "command": [
+        "dotnet",
+        "run",
+        "--project",
+        "tests/PublicChecks/PublicChecks.csproj",
+        "-c",
+        "Release"
+      ],
+      "workingDirectory": ".",
+      "timeoutSeconds": 180
+    }
+  ],
+  "limits": {
+    "targetTimeoutSeconds": 1800,
+    "validatorTimeoutSeconds": 120
+  }
+}

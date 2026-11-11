@@ -1,0 +1,136 @@
+diff --git a/src/OrderSearch/OrderEndpoints.cs b/src/OrderSearch/OrderEndpoints.cs
+index 56a3993..2e0ee81 100644
+--- a/src/OrderSearch/OrderEndpoints.cs
++++ b/src/OrderSearch/OrderEndpoints.cs
+@@ -4,6 +4,12 @@ public static class OrderEndpoints
+ {
+     public static void MapOrders(this WebApplication app)
+     {
++        app.MapGet("/orders", (HttpContext context, OrderService service) =>
++        {
++            if (!OrderSearchRequest.TryParse(context.Request.Query, out var request))
++                return Results.BadRequest(new { error = "Invalid order search." });
++            return Results.Ok(service.Search(TenantIdentity.Required(context), request!));
++        }).RequireAuthorization();
+         app.MapPost("/orders", (NewOrderRequest request, HttpContext context, OrderService service) =>
+         {
+             var errors = OrderInputValidation.Errors(request);
+diff --git a/src/OrderSearch/OrderRepository.cs b/src/OrderSearch/OrderRepository.cs
+index a203eb8..c9ac8e7 100644
+--- a/src/OrderSearch/OrderRepository.cs
++++ b/src/OrderSearch/OrderRepository.cs
+@@ -34,6 +34,44 @@ public sealed class OrderRepository(OrderDatabase database)
+         command.ExecuteNonQuery();
+     }
+ 
++    public (IReadOnlyList<StoredOrder> Items, long Total) Search(string tenantId, OrderSearchRequest request)
++    {
++        using var connection = database.Open();
++        using var transaction = connection.BeginTransaction(deferred: true);
++        using var command = connection.CreateCommand();
++        command.Transaction = transaction;
++        string where = " WHERE tenant_id=$tenant";
++        command.Parameters.AddWithValue("$tenant", tenantId);
++        if (request.Status is { } status)
++        {
++            where += " AND status=$status";
++            command.Parameters.AddWithValue("$status", status.ToString());
++        }
++        if (request.CreatedFrom is { } from)
++        {
++            where += " AND created_utc >= $from";
++            command.Parameters.AddWithValue("$from", OrderDatabase.Timestamp(from));
++        }
++        if (request.CreatedTo is { } to)
++        {
++            where += " AND created_utc < $to";
++            command.Parameters.AddWithValue("$to", OrderDatabase.Timestamp(to));
++        }
++        command.CommandText = "SELECT COUNT(*) FROM orders" + where;
++        long total = (long)command.ExecuteScalar()!;
++        command.CommandText = "SELECT id,tenant_id,created_utc,status,total_minor FROM orders" + where
++            + " ORDER BY created_utc DESC,id ASC LIMIT $limit OFFSET $offset";
++        command.Parameters.AddWithValue("$limit", request.PageSize);
++        command.Parameters.AddWithValue("$offset", ((long)request.Page - 1) * request.PageSize);
++        List<StoredOrder> items = [];
++        using (var reader = command.ExecuteReader())
++        {
++            while (reader.Read()) items.Add(Read(reader));
++        }
++        transaction.Commit();
++        return (items, total);
++    }
++
+     private static StoredOrder Read(SqliteDataReader reader) => new(
+         reader.GetString(0), reader.GetString(1),
+         DateTimeOffset.Parse(reader.GetString(2), System.Globalization.CultureInfo.InvariantCulture),
+diff --git a/src/OrderSearch/OrderSearchRequest.cs b/src/OrderSearch/OrderSearchRequest.cs
+new file mode 100644
+index 0000000..8e81773
+--- /dev/null
++++ b/src/OrderSearch/OrderSearchRequest.cs
+@@ -0,0 +1,47 @@
++using System.Globalization;
++
++namespace OrderSearch;
++
++public sealed record OrderSearchRequest(OrderStatus? Status, DateTimeOffset? CreatedFrom,
++    DateTimeOffset? CreatedTo, int Page, int PageSize)
++{
++    public static bool TryParse(IQueryCollection query, out OrderSearchRequest? request)
++    {
++        request = null;
++        if (!Integer(query, "page", 1, out int page) || page < 1 ||
++            !Integer(query, "pageSize", 20, out int size) || size is < 1 or > 50)
++            return false;
++        OrderStatus? status = null;
++        if (query.TryGetValue("status", out var value))
++        {
++            if (!Enum.TryParse<OrderStatus>(value.ToString(), true, out var parsed) ||
++                !Enum.IsDefined(parsed) || int.TryParse(value.ToString(), out _)) return false;
++            status = parsed;
++        }
++        if (!Timestamp(query, "createdFrom", out var from) ||
++            !Timestamp(query, "createdTo", out var to) || from > to) return false;
++        request = new(status, from, to, page, size);
++        return true;
++    }
++
++    private static bool Integer(IQueryCollection query, string key, int fallback, out int value)
++    {
++        value = fallback;
++        return !query.TryGetValue(key, out var text) || int.TryParse(text.ToString(), NumberStyles.None,
++            CultureInfo.InvariantCulture, out value);
++    }
++
++    private static bool Timestamp(IQueryCollection query, string key, out DateTimeOffset? value)
++    {
++        value = null;
++        if (!query.TryGetValue(key, out var text)) return true;
++        string[] formats = ["yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'",
++            "yyyy-MM-dd'T'HH:mm:sszzz", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz"];
++        if (!DateTimeOffset.TryParseExact(text.ToString(), formats, CultureInfo.InvariantCulture,
++                DateTimeStyles.AssumeUniversal, out var result) || result.Offset != TimeSpan.Zero) return false;
++        value = result;
++        return true;
++    }
++}
++
++public sealed record OrderPage(IReadOnlyList<OrderDto> Items, long Total, int Page, int PageSize);
+diff --git a/src/OrderSearch/OrderService.cs b/src/OrderSearch/OrderService.cs
+index 14a3195..a36c65c 100644
+--- a/src/OrderSearch/OrderService.cs
++++ b/src/OrderSearch/OrderService.cs
+@@ -22,6 +22,12 @@ public sealed class OrderService(OrderRepository repository)
+         return order is null ? null : ToDto(order);
+     }
+ 
++    public OrderPage Search(string tenantId, OrderSearchRequest request)
++    {
++        var page = repository.Search(tenantId, request);
++        return new(page.Items.Select(ToDto).ToArray(), page.Total, request.Page, request.PageSize);
++    }
++
+     public static OrderDto ToDto(StoredOrder order) =>
+         new(order.Id, order.CreatedUtc, order.Status.ToString(), order.TotalMinor);
+ }

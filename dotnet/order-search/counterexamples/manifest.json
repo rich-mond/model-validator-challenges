@@ -1,0 +1,32 @@
+{
+  "counterexamples": [
+    {
+      "id": "filter-after-pagination",
+      "path": "filter-after-pagination.patch",
+      "expectedFailedAssertions": [
+        "search-filters"
+      ]
+    },
+    {
+      "id": "missing-tenant",
+      "path": "missing-tenant.patch",
+      "expectedFailedAssertions": [
+        "tenant-and-retrieval"
+      ]
+    },
+    {
+      "id": "wrong-tie-order",
+      "path": "wrong-tie-order.patch",
+      "expectedFailedAssertions": [
+        "pagination-and-ordering"
+      ]
+    },
+    {
+      "id": "page-count-as-total",
+      "path": "page-count-as-total.patch",
+      "expectedFailedAssertions": [
+        "pagination-and-ordering"
+      ]
+    }
+  ]
+}

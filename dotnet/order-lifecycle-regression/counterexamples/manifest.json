@@ -1,0 +1,25 @@
+{
+  "counterexamples": [
+    {
+      "id": "original-race",
+      "path": "original-race.patch",
+      "expectedFailedAssertions": [
+        "concurrent-transition"
+      ]
+    },
+    {
+      "id": "state-with-duplicate-audit",
+      "path": "state-with-duplicate-audit.patch",
+      "expectedFailedAssertions": [
+        "concurrent-transition"
+      ]
+    },
+    {
+      "id": "rejects-retries",
+      "path": "rejects-retries.patch",
+      "expectedFailedAssertions": [
+        "retry-and-guard"
+      ]
+    }
+  ]
+}
