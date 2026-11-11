@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+assertion="${1:?assertion required}"
+work_dir="$(mktemp -d)"
+cp -R /candidate "$work_dir/candidate"
+find "$work_dir/candidate" -type d \( -name bin -o -name obj \) -prune -exec rm -rf {} +
+mkdir -p "$work_dir/worker"
+cat > "$work_dir/worker/WorkerRuntime.csproj" <<EOF
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors><NuGetAudit>false</NuGetAudit><EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup>
+  <ItemGroup><Compile Include="/validator/Worker.cs" /><ProjectReference Include="$work_dir/candidate/src/OrderLifecycle/OrderLifecycle.csproj" /><PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.5" /></ItemGroup>
+</Project>
+EOF
+dotnet restore "$work_dir/worker/WorkerRuntime.csproj" --ignore-failed-sources
+dotnet build "$work_dir/worker/WorkerRuntime.csproj" -c Release --no-restore -o "$work_dir/worker-out" -warnaserror --nologo
+export CANDIDATE_WORKER="$work_dir/worker-out/WorkerRuntime.dll"
+dotnet /validator/bin/Release/net10.0/Supervisor.dll "$assertion"

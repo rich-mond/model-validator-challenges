@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "1.0",
+  "challengeId": "order-search-dotnet",
+  "challengeVersion": "1.0.0",
+  "title": "Order Search",
+  "prompt": {
+    "path": "prompt.md",
+    "sha256": "8c17ced0bb04d1d736407139187e55d4eb8e6089236a8bb6c531536297b30787"
+  },
+  "workspace": {
+    "type": "git-bundle",
+    "path": "workspace/starter.bundle",
+    "sha256": "d513e9d3451bd2fe735fe4a17a7b1114e27db11768b245961e39d4deb72dd2df",
+    "baseCommit": "e751c959fbf29a30c4068de34062f782501eb0cd"
+  },
+  "validation": {
+    "image": {
+      "type": "build",
+      "contextPath": "validator",
+      "containerfilePath": "validator/Containerfile",
+      "contextSha256": "6fab899ee31a7567b7cf02af8152b89ffeae74b4c85cb1c86112a48a1c8e9477"
+    },
+    "workspacePath": "/candidate",
+    "assertions": [
+      {
+        "id": "search-filters",
+        "title": "Search Filters",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "search-filters"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "pagination-and-ordering",
+        "title": "Pagination And Ordering",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "pagination-and-ordering"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "tenant-and-retrieval",
+        "title": "Tenant And Retrieval",
+        "classification": "regression",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "tenant-and-retrieval"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      },
+      {
+        "id": "invalid-requests",
+        "title": "Invalid Requests",
+        "classification": "requirement",
+        "required": true,
+        "command": [
+          "/validator/run",
+          "invalid-requests"
+        ],
+        "workingDirectory": "/candidate",
+        "timeoutSeconds": 120
+      }
+    ]
+  },
+  "selfChecks": [
+    {
+      "id": "public-regressions",
+      "title": "Run existing public regression checks",
+      "command": [
+        "dotnet",
+        "run",
+        "--project",
+        "tests/PublicChecks/PublicChecks.csproj",
+        "-c",
+        "Release"
+      ],
+      "workingDirectory": ".",
+      "timeoutSeconds": 180
+    }
+  ],
+  "limits": {
+    "targetTimeoutSeconds": 1800,
+    "validatorTimeoutSeconds": 120
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "counterexamples": [
+    {
+      "id": "empty-address-table",
+      "path": "empty-address-table.patch",
+      "expectedFailedAssertions": [
+        "populated-upgrade"
+      ]
+    },
+    {
+      "id": "legacy-projection",
+      "path": "legacy-projection.patch",
+      "expectedFailedAssertions": [
+        "address-operations"
+      ]
+    },
+    {
+      "id": "no-first-primary",
+      "path": "no-first-primary.patch",
+      "expectedFailedAssertions": [
+        "primary-invariants"
+      ]
+    },
+    {
+      "id": "non-transactional",
+      "path": "non-transactional.patch",
+      "expectedFailedAssertions": [
+        "transactional-upgrade"
+      ]
+    }
+  ]
+}

@@ -25,5 +25,8 @@ When a pack changes, re-check the complexity label. If public self-checks or sta
 | Pack | Language | Complexity | Reason |
 | --- | --- | --- | --- |
 | `dotnet/idempotent-processing` | C# / .NET | Foundation | Single-library behavior fix with a public test project and hidden validator coverage |
-| `dotnet/checkout-discounts` | C# / .NET | Intermediate | Multi-file pricing task with tier discounts, coupon stacking, injected-clock validity and hidden source-boundary validation |
+| `dotnet/checkout-discounts` | C# / .NET | Intermediate | Multi-file pricing task with tier discounts, coupon stacking, injected-clock validity and hidden injected-clock validation |
 | `python/order-normalization` | Python | Foundation | Single-function normalization task with public unit tests and hidden validator coverage |
+| `dotnet/order-lifecycle-regression` | C# / .NET | Intermediate | Debug a state/audit race across existing services and real persistence while preserving ordinary operations |
+| `dotnet/order-search` | C# / .NET | Intermediate | Coordinate endpoint, identity, service, query and response behaviour over SQLite |
+| `dotnet/customer-address-migration` | C# / .NET | Intermediate | Evolve a populated SQLite schema and application projections using the existing migration mechanism |

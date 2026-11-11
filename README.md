@@ -25,6 +25,9 @@ Keeping those responsibilities separate matters because challenge packs can be w
 | `dotnet/idempotent-processing` | C# / .NET | Foundation | Make command processing idempotent under duplicate and concurrent delivery | Docker validator checks duplicate delivery, concurrent delivery and distinct-command regression |
 | `dotnet/checkout-discounts` | C# / .NET | Intermediate | Implement deterministic checkout pricing with tier discounts, coupon stacking and clock-bound validity | Docker validator checks tier/coupon behavior, non-stackable choice, injected-clock boundaries and cap/floor regressions |
 | `python/order-normalization` | Python | Foundation | Normalize inbound order events without mutating input | Docker validator checks duplicate SKU aggregation, decimal cent rounding and metadata/input stability |
+| `dotnet/order-lifecycle-regression` | C# / .NET | Intermediate | Investigate overlapping cancellation/dispatch requests in an existing service | Real SQLite state/audit transitions and deterministic overlap |
+| `dotnet/order-search` | C# / .NET | Intermediate | Implement search across API, service and persistence layers | Real HTTP, authentication, tenant isolation, filters and pagination |
+| `dotnet/customer-address-migration` | C# / .NET | Intermediate | Upgrade populated databases while preserving legacy customer responses | Real SQLite migration, address invariants and rollback |
 
 Each listed pack is expected to pass `modelval challenge verify` before it is used in a benchmark.
 
@@ -53,12 +56,18 @@ dotnet build ModelValidator.slnx -c Release
 dotnet test ModelValidator.slnx -c Release --no-build
 ```
 
-Verify all three supported packs:
+Verify all six supported packs:
 
 ```powershell
 dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\dotnet\idempotent-processing
 dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\dotnet\checkout-discounts
 dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\python\order-normalization
+
+dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\dotnet\order-lifecycle-regression
+
+dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\dotnet\order-search
+
+dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\dotnet\customer-address-migration
 ```
 
 Verification proves a challenge pack is internally coherent before any model or agent is benchmarked. The starter workspace must fail required assertions, the oracle patch must pass, repeated oracle validation must be stable and known-invalid patches must fail.
@@ -121,7 +130,7 @@ To print the persisted Markdown or JSON reports instead, use `report --run <run-
 For another agent CLI, pass the command after `--`:
 
 ```powershell
-dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge ..\model-validator-challenges\python\order-normalization --agent codex-cli --provider openai --model gpt-5 --output ..\model-validator-runs\codex-cli-order-normalization -- codex exec --model {model} --sandbox workspace-write --ask-for-approval never {prompt}
+dotnet run --project src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- benchmark --challenge ..\model-validator-challenges\python\order-normalization --agent codex-cli --provider openai --model gpt-5 --output ..\model-validator-runs\codex-cli-order-normalization -- codex -a never exec --model "{model}" --sandbox workspace-write "{prompt}"
 ```
 
 Supported placeholders are `{prompt}`, `{promptPath}`, `{workspace}`, `{output}` and `{model}`.
@@ -183,8 +192,25 @@ Do not commit benchmark runs, logs, temporary workspaces, generated verification
 
 ## Reproducible qualification
 
-The CI workflow qualifies all three packs against an exact framework commit. It records the framework and challenge commits and uploads qualification logs and results even on failure. To update compatibility, qualify all three packs against the proposed framework commit, then change the workflow's framework `ref` to that full commit SHA in a reviewed PR. A moving branch is not a qualified revision. Reproduce locally by checking out the recorded pair and running the three `challenge verify` commands above. Unexpected non-ignored files or tracked modifications fail CI hygiene.
+The CI workflow qualifies all six packs against an exact framework commit. It records the framework and challenge commits and uploads qualification logs and results even on failure. To update compatibility, qualify all six packs against the proposed framework commit, then change the workflow's framework `ref` to that full commit SHA in a reviewed PR. A moving branch is not a qualified revision. Reproduce locally by checking out the recorded pair and running the six `challenge verify` commands above. Unexpected non-ignored files or tracked modifications fail CI hygiene.
 
 The 1.0.1 pack revisions strengthen validators and calibration without changing starter bundles or oracle solutions. Candidate calls run in child processes; trusted comparisons run in the supervisor. This rejects the demonstrated early exits, but is not protection against arbitrary malicious interference inside the shared validator container.
 
 Python order normalization 1.1.0 explicitly retains the first non-zero-quantity line's unit price when duplicate normalized SKUs have different prices. Its prompt, public starter test and validator agree; later prices and discarded zero-quantity lines cannot replace that price. The existing oracle is unchanged.
+
+## Local Codex smoke runs
+
+Qualify a pack before evaluating a real candidate. Inspect your installed CLI with `codex --version`, `codex exec --help` and `codex login status`. Use an actually configured model; do not infer a model version from its name. Do not install Codex or change credentials merely to complete a smoke run.
+
+From the framework repository, repeat this command individually for `order-lifecycle-regression`, `order-search` and `customer-address-migration`, changing `$pack` and selecting a fresh output path each time:
+
+```powershell
+$pack = "order-lifecycle-regression"
+$model = "<model actually configured in your Codex installation>"
+$codex = (Get-Command codex -CommandType Application).Source
+dotnet run --project src/ModelValidator.Cli/ModelValidator.Cli.csproj -c Release -- benchmark --challenge "../model-validator-challenges/dotnet/$pack" --agent codex-cli --agent-version "<version from codex --version>" --provider openai --model $model --attempts 1 --output "../model-validator-runs/$pack-codex" -- $codex -a never exec --ignore-user-config --ephemeral --model "{model}" --sandbox workspace-write --cd "{workspace}" --json "{prompt}"
+```
+
+These flags are supported by the locally inspected CLI (0.167.0-alpha.4.1); inspect help for your installation rather than assuming flags. A native executable is required by the process adapter. The new invocation is fresh and receives the materialised public task, not a resumed author session or oracle patch. It must run the public self-check before finishing. Reports and patches are retained outside both repositories; unavailable usage stays unknown.
+
+A host process adapter is not a filesystem isolation boundary: workspace-write does not establish that hidden author files are unreadable. Record these attempts as non-authoritative local smoke tests. Author-initiated runs are not independent evidence of model performance, even when successful. Report calibration, actual agent outcome, public checks, hidden assertions, timing and infrastructure failures separately. A failed candidate is not permission to weaken a legitimate assertion. Codex model calls are never part of CI.
