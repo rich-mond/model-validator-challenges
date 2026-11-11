@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "challengeId": "checkout-discounts-dotnet",
-  "challengeVersion": "1.0.0",
+  "challengeVersion": "1.0.1",
   "title": "Checkout discount pricing",
   "prompt": {
     "path": "prompt.md",
@@ -18,7 +18,7 @@
       "type": "build",
       "contextPath": "validator",
       "containerfilePath": "validator/Containerfile",
-      "contextSha256": "a125cb702354d5c7492c91e0d6ab987e8515d8001aa84ec191b3cb4041d30a7e"
+      "contextSha256": "31ac9d3905678c855ef149a9614aec67acaff4c46a54c03f0719b6d6ebf8ab70"
     },
     "workspacePath": "/candidate",
     "assertions": [

@@ -22,6 +22,45 @@
       "expectedFailedAssertions": [
         "metadata-and-input-stability"
       ]
+    },
+    {
+      "id": "successful-early-exit",
+      "path": "successful-early-exit.patch",
+      "expectedFailedAssertions": [
+        "duplicate-lines",
+        "decimal-cents",
+        "metadata-and-input-stability"
+      ]
+    },
+    {
+      "id": "immediate-process-exit",
+      "path": "immediate-process-exit.patch",
+      "expectedFailedAssertions": [
+        "duplicate-lines",
+        "decimal-cents",
+        "metadata-and-input-stability"
+      ]
+    },
+    {
+      "id": "incorrect-total",
+      "path": "incorrect-total.patch",
+      "expectedFailedAssertions": [
+        "duplicate-lines"
+      ]
+    },
+    {
+      "id": "incorrect-quantity",
+      "path": "incorrect-quantity.patch",
+      "expectedFailedAssertions": [
+        "duplicate-lines"
+      ]
+    },
+    {
+      "id": "input-mutation",
+      "path": "input-mutation.patch",
+      "expectedFailedAssertions": [
+        "metadata-and-input-stability"
+      ]
     }
   ]
 }

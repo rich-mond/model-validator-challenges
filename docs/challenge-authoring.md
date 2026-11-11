@@ -98,7 +98,7 @@ Validators may use any runtime needed by the challenge. The framework only build
 
 Validator rules:
 
-- Exit code `0` means the assertion passed.
+- Exit code `0` from the trusted supervisor means its comparisons completed and passed. Candidate exit code `0` alone never establishes assertion success.
 - Non-zero exit codes mean failed assertions unless the framework classifies timeout or infrastructure failure.
 - Validation must be deterministic.
 - Validation must not depend on network access.
@@ -158,3 +158,9 @@ Do not commit:
 - `.bak` files.
 
 Use ignored directories such as `runs/`, `artifacts/`, `outputs/` or `temp/` for local execution evidence.
+
+## Candidate process boundary
+
+Keep candidate invocation separate from the supervisor's assertion logic. The supported validators exchange concrete result data with disposable workers. Empty or malformed responses, abnormal exits and timeouts fail the assertion; a success string cannot replace result comparisons. The worker and supervisor still share a container and are not an arbitrary hostile-code isolation boundary. Tests establish behaviour, not absence of all forbidden API calls.
+
+Qualification requires actual assertion failures for each declared counterexample; infrastructure errors and timeouts do not count. CI qualifies the fixed three-pack catalogue with an exact framework commit and records both repository SHAs. Update the framework `ref` only after all three packs qualify, as described in the README. The hygiene step fails for non-ignored generated content.

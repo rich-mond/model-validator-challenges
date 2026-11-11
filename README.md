@@ -23,7 +23,7 @@ Keeping those responsibilities separate matters because challenge packs can be w
 | Pack | Language | Complexity | Task | Verification |
 | --- | --- | --- | --- | --- |
 | `dotnet/idempotent-processing` | C# / .NET | Foundation | Make command processing idempotent under duplicate and concurrent delivery | Docker validator checks duplicate delivery, concurrent delivery and distinct-command regression |
-| `dotnet/checkout-discounts` | C# / .NET | Intermediate | Implement deterministic checkout pricing with tier discounts, coupon stacking and clock-bound validity | Docker validator checks tier/coupon behavior, non-stackable choice, clock/source boundary and cap/floor regressions |
+| `dotnet/checkout-discounts` | C# / .NET | Intermediate | Implement deterministic checkout pricing with tier discounts, coupon stacking and clock-bound validity | Docker validator checks tier/coupon behavior, non-stackable choice, injected-clock boundaries and cap/floor regressions |
 | `python/order-normalization` | Python | Foundation | Normalize inbound order events without mutating input | Docker validator checks duplicate SKU aggregation, decimal cent rounding and metadata/input stability |
 
 Each listed pack is expected to pass `modelval challenge verify` before it is used in a benchmark.
@@ -53,7 +53,7 @@ dotnet build ModelValidator.slnx -c Release
 dotnet test ModelValidator.slnx -c Release --no-build
 ```
 
-Verify both supported packs:
+Verify all three supported packs:
 
 ```powershell
 dotnet run --project .\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path ..\model-validator-challenges\dotnet\idempotent-processing
@@ -180,3 +180,9 @@ dotnet run --project ..\model-validator\src\ModelValidator.Cli\ModelValidator.Cl
 ## Generated Outputs
 
 Do not commit benchmark runs, logs, temporary workspaces, generated verification JSON or candidate patches. Those files belong in ignored output directories such as `runs/`, `artifacts/`, `outputs/`, `temp/` or an external results location.
+
+## Reproducible qualification
+
+The CI workflow qualifies all three packs against an exact framework commit. It records the framework and challenge commits and uploads qualification logs and results even on failure. To update compatibility, qualify all three packs against the proposed framework commit, then change the workflow's framework `ref` to that full commit SHA in a reviewed PR. A moving branch is not a qualified revision. Reproduce locally by checking out the recorded pair and running the three `challenge verify` commands above. Unexpected non-ignored files or tracked modifications fail CI hygiene.
+
+The 1.0.1 pack revisions strengthen validators and calibration without changing starter bundles or oracle solutions. Candidate calls run in child processes; trusted comparisons run in the supervisor. This rejects the demonstrated early exits, but is not protection against arbitrary malicious interference inside the shared validator container.

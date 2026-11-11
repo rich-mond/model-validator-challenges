@@ -33,11 +33,8 @@ cat > "$work_dir/ValidatorHarness.csproj" <<EOF
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="CommandProcessor">
-      <HintPath>$candidate_dll</HintPath>
-    </Reference>
+    <Compile Include="/validator/Probe.cs" />
+    <Compile Include="/validator/Types.cs" />
   </ItemGroup>
 </Project>
 EOF
@@ -46,7 +43,6 @@ cat > "$work_dir/Program.cs" <<'EOF'
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using CommandProcessor;
 
 static void Require(bool condition, string message)
 {
@@ -71,14 +67,27 @@ static void DuplicateDelivery()
 
 static void ConcurrentDelivery()
 {
-    AccountLedger ledger = new();
-    CommandMessage command = new("cmd-concurrent", "acct-2", 25m);
-    Task[] tasks = Enumerable.Range(0, 64).Select(_ => Task.Run(() => ledger.Apply(command))).ToArray();
+    for (int round = 0; round < 8; round++)
+    {
+        AccountLedger ledger = new();
+        CommandMessage command = new("cmd-concurrent", "acct-2", 25m);
+        Task[] tasks = Enumerable.Range(0, 64).Select(_ => Task.Run(() => ledger.Apply(command))).ToArray();
 
-    Task.WaitAll(tasks);
+        Task.WaitAll(tasks);
 
-    Require(ledger.GetBalance("acct-2") == 25m, $"Concurrent duplicate command changed balance to {ledger.GetBalance("acct-2")}.");
-    Require(ledger.AppliedCommandIds.SequenceEqual(new[] { "cmd-concurrent" }), "Concurrent duplicate command ID was recorded more than once.");
+        Require(ledger.GetBalance("acct-2") == 25m, $"Concurrent duplicate command changed balance to {ledger.GetBalance("acct-2")}.");
+        Require(ledger.AppliedCommandIds.SequenceEqual(new[] { "cmd-concurrent" }), "Concurrent duplicate command ID was recorded more than once.");
+
+        AccountLedger distinct = new();
+        Task.WaitAll(Enumerable.Range(0, 128).Select(i => Task.Run(() => {
+            CommandMessage message = new($"distinct-{i}", "shared", i % 2 == 0 ? 1.25m : -0.25m);
+            distinct.Apply(message);
+            distinct.Apply(message);
+        })).ToArray());
+        Require(distinct.GetBalance("shared") == 64m, "Concurrent distinct commands were lost or double-applied.");
+        Require(distinct.AppliedCommandIds.Count == 128 && distinct.AppliedCommandIds.Distinct().Count() == 128,
+            "Concurrent distinct IDs were lost or duplicated.");
+    }
 }
 
 static void DistinctCommands()
@@ -112,4 +121,18 @@ switch (assertion)
 }
 EOF
 
-dotnet run --project "$work_dir/ValidatorHarness.csproj" -- "$assertion"
+mkdir -p "$work_dir/worker"
+cat > "$work_dir/worker/Worker.csproj" <<EOF
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><EnableDefaultCompileItems>false</EnableDefaultCompileItems><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
+  <ItemGroup><Compile Include="/validator/Worker.cs" /></ItemGroup>
+  <ItemGroup>
+    <Reference Include="CommandProcessor">
+      <HintPath>$candidate_dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
+EOF
+dotnet build "$work_dir/worker/Worker.csproj" --nologo
+export CANDIDATE_WORKER="$work_dir/worker/bin/Debug/net10.0/Worker.dll"
+dotnet run --project "$work_dir/ValidatorHarness.csproj" -p:TreatWarningsAsErrors=true -- "$assertion"

@@ -9,13 +9,6 @@ if [ ! -f "$candidate_project" ]; then
   exit 1
 fi
 
-if [ "$assertion" = "clock-and-source-boundary" ]; then
-  if grep -R "DateTimeOffset\\.UtcNow\\|DateTime\\.UtcNow\\|DateTime\\.Now\\|DateTimeOffset\\.Now" /candidate/src/Checkout --include='*.cs'; then
-    echo "Candidate source must use injected IClock.UtcNow, not wall-clock APIs." >&2
-    exit 1
-  fi
-fi
-
 work_dir="$(mktemp -d)"
 candidate_copy="$work_dir/candidate"
 mkdir -p "$candidate_copy"
@@ -40,11 +33,8 @@ cat > "$work_dir/ValidatorHarness.csproj" <<EOF
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="Checkout">
-      <HintPath>$candidate_dll</HintPath>
-    </Reference>
+    <Compile Include="/validator/Probe.cs" />
+    <Compile Include="/validator/Types.cs" />
   </ItemGroup>
 </Project>
 EOF
@@ -53,7 +43,6 @@ cat > "$work_dir/Program.cs" <<'EOF'
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Checkout;
 
 static void Require(bool condition, string message)
 {
@@ -120,6 +109,17 @@ static void ClockAndSourceBoundary()
         new[] { "EXPIRED", "FUTURE", "WELCOME500" });
 
     RequireQuote(quote, 1500, 0, 1000, new DiscountLine("WELCOME500", 500));
+
+    DateTimeOffset start = new(2026, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    DateTimeOffset end = new(2026, 12, 31, 23, 59, 59, TimeSpan.Zero);
+    foreach (var test in new[] { (start.AddTicks(-1), false), (start, true), (end, true), (end.AddTicks(1), false),
+                                 (start.AddYears(-20), false), (end.AddYears(20), false) })
+    {
+        PriceQuote boundary = CreateService(test.Item1).Quote(new("boundary", CustomerTier.Bronze),
+            new[] { new CartItem("SKU-MUG", 1) }, new[] { "SAVE10" });
+        RequireQuote(boundary, 1500, 0, test.Item2 ? 1350 : 1500,
+            test.Item2 ? new[] { new DiscountLine("SAVE10", 150) } : Array.Empty<DiscountLine>());
+    }
 }
 
 static void DedupeCapAndFloor()
@@ -130,6 +130,13 @@ static void DedupeCapAndFloor()
         new[] { "SAVE10", "save10", "FREE" });
 
     RequireQuote(quote, 225, 11, 0, new DiscountLine("SAVE10", 21), new DiscountLine("FREE", 193));
+    var service = CreateService(new(2026, 6, 1, 0, 0, 0, TimeSpan.Zero));
+    RequireQuote(service.Quote(new("round", CustomerTier.Bronze), new[] { new CartItem("SKU-STICKER", 3) }, new[] { "SAVE10" }),
+        225, 0, 202, new DiscountLine("SAVE10", 23));
+    RequireQuote(service.Quote(new("cap", CustomerTier.Bronze), new[] { new CartItem("SKU-BAG", 10) }, new[] { "SAVE10" }),
+        120000, 0, 118000, new DiscountLine("SAVE10", 2000));
+    RequireQuote(service.Quote(new("vip", CustomerTier.Bronze), new[] { new CartItem("SKU-BAG", 1) }, new[] { "VIP20", "SAVE10" }),
+        12000, 0, 10200, new DiscountLine("VIP20", 1800));
 }
 
 string assertion = Environment.GetCommandLineArgs().Length > 1 ? Environment.GetCommandLineArgs()[1] : "";
@@ -154,4 +161,18 @@ switch (assertion)
 }
 EOF
 
-dotnet run --project "$work_dir/ValidatorHarness.csproj" -- "$assertion"
+mkdir -p "$work_dir/worker"
+cat > "$work_dir/worker/Worker.csproj" <<EOF
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><EnableDefaultCompileItems>false</EnableDefaultCompileItems><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
+  <ItemGroup><Compile Include="/validator/Worker.cs" /></ItemGroup>
+  <ItemGroup>
+    <Reference Include="Checkout">
+      <HintPath>$candidate_dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>
+EOF
+dotnet build "$work_dir/worker/Worker.csproj" --nologo
+export CANDIDATE_WORKER="$work_dir/worker/bin/Debug/net10.0/Worker.dll"
+dotnet run --project "$work_dir/ValidatorHarness.csproj" -p:TreatWarningsAsErrors=true -- "$assertion"

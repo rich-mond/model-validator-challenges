@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0",
   "challengeId": "idempotent-processing-dotnet",
-  "challengeVersion": "1.0.0",
+  "challengeVersion": "1.0.1",
   "title": "Idempotent command processing",
   "prompt": {
     "path": "prompt.md",
@@ -18,7 +18,7 @@
       "type": "build",
       "contextPath": "validator",
       "containerfilePath": "validator/Containerfile",
-      "contextSha256": "c2cd30f0eddaf6e92ac49aa4506900e5a724414da52a016dcffa529d4ea5326e"
+      "contextSha256": "02e63c7398d995ab3b5f491ede80aa23b31a8f2240933b52585ca22ec203b322"
     },
     "workspacePath": "/candidate",
     "assertions": [

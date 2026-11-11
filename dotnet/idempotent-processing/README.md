@@ -31,3 +31,9 @@ This is a local sanity check. The hidden Docker validator remains the authoritat
 ```powershell
 dotnet run --project ..\..\..\model-validator\src\ModelValidator.Cli\ModelValidator.Cli.csproj -c Release -- challenge verify --path .
 ```
+
+## Validator reliability (1.0.1)
+
+Concurrent coverage includes distinct commands on one shared account, with duplicate deliveries, exact final balance and unique ID checks. Concurrent application order is not prescribed.
+
+Candidate calls run in a worker process and the supervisor compares returned data. Calibration includes successful early termination; Python also includes immediate process termination. Shared-container interference is outside this protection. Starter bundles and oracle patches are unchanged.
