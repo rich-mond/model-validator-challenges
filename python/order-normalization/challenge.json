@@ -1,24 +1,24 @@
 {
   "schemaVersion": "1.0",
   "challengeId": "order-normalization-python",
-  "challengeVersion": "1.0.1",
+  "challengeVersion": "1.1.0",
   "title": "Order event normalization",
   "prompt": {
     "path": "prompt.md",
-    "sha256": "5ba1cf09c3e5672ecd839f330dc50ba400d8b4bf79fc1c8c755be899f3e2a22d"
+    "sha256": "4d7b31df8d3ed929d705f74804b39b137332ccdb925899f910fbc9741f8e7779"
   },
   "workspace": {
     "type": "git-bundle",
     "path": "workspace/starter.bundle",
-    "sha256": "029a83196be5d29e22698b37e1a2c94baefdd22154359b9fe704576f5dc5dc15",
-    "baseCommit": "03c867cc77d78300765197e837b95c7e9342cf0c"
+    "sha256": "70acd2f4cd76d220e0606a554519d5089070e71110a7772ed066d58fe02fcb44",
+    "baseCommit": "94b46f92cbfc9da8d93970b2b7fb015a08b6bd38"
   },
   "validation": {
     "image": {
       "type": "build",
       "contextPath": "validator",
       "containerfilePath": "validator/Containerfile",
-      "contextSha256": "3269c8871f31e49386ad4525c7fc14c774c01578b781c2b3a0fdfd7aa73f4948"
+      "contextSha256": "012784d5c3313fa49c8a0777ec7b1549a14e4769b8badb6cdc6e6433c19e1b25"
     },
     "workspacePath": "/candidate",
     "assertions": [

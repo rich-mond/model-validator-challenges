@@ -13,8 +13,8 @@ Return a new normalized dictionary with:
 - the original `order_id`
 - uppercase `currency`
 - `lines` sorted by normalized SKU, where normalized SKU means surrounding whitespace trimmed and remaining text uppercased
-- duplicate normalized SKU lines combined by summing quantities
-- zero-quantity lines omitted
+- duplicate normalized SKU lines combined by summing quantities; retain the unit price from the first non-zero-quantity line for that SKU in original input order, even when later prices differ
+- zero-quantity lines omitted; they do not establish a SKU's unit price
 - `unit_price_cents` as an integer number of cents, rounded half up from `unit_price`
 - `total_cents` equal to the sum of `quantity * unit_price_cents`
 
