@@ -61,6 +61,20 @@
       "expectedFailedAssertions": [
         "metadata-and-input-stability"
       ]
+    },
+    {
+      "id": "last-duplicate-price",
+      "path": "last-duplicate-price.patch",
+      "expectedFailedAssertions": [
+        "duplicate-lines"
+      ]
+    },
+    {
+      "id": "zero-quantity-price",
+      "path": "zero-quantity-price.patch",
+      "expectedFailedAssertions": [
+        "duplicate-lines"
+      ]
     }
   ]
 }

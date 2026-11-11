@@ -42,6 +42,21 @@ def assert_duplicate_lines():
     assert result["total_cents"] == 5555, result
 
 
+    for first, later, expected_cents in [("1.005", "8.00", 101), ("8.00", "1.005", 800)]:
+        event = {
+            "order_id": "ORD-MIXED",
+            "currency": "usd",
+            "lines": [
+                {"sku": "ABC", "quantity": 0, "unit_price": "99.99"},
+                {"sku": " abc ", "quantity": 2, "unit_price": first},
+                {"sku": "ABC", "quantity": 3, "unit_price": later},
+            ],
+        }
+        result = normalize(event)[0]
+        assert result["lines"] == [{"sku": "ABC", "quantity": 5, "unit_price_cents": expected_cents}], result
+        assert result["total_cents"] == 5 * expected_cents, result
+
+
 def assert_decimal_cents():
     event = {
         "order_id": "ORD-ROUND",
